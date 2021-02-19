@@ -821,6 +821,7 @@ struct {
 	uint8_t sameCnt;
 	short angle;
 	uint8_t mode;
+    uint16_t checkCnt;
 }AngChk, *SensChk;
 #ifdef USE_FUN_REMOTE
 UI_REMOTE UI_Remote;
@@ -20671,7 +20672,7 @@ void UI_AngleMeasure_CheckCurrentSensitivity(void)
 	//uint8_t temp;
 	
 	if (UI_Time.tmp2_ms == 0) { //run every 10ms
-		UI_Time.tmp2_ms = 10;
+		UI_Time.tmp2_ms = 10; //ori
 	}
 	else return;
 
@@ -20683,6 +20684,7 @@ void UI_AngleMeasure_CheckCurrentSensitivity(void)
 		AngChk.prev = (float)cur;
 		AngChk.angle = RunWnd.angle;
 		AngChk.sameCnt = 0;
+        AngChk.checkCnt = 0;
 		//if (MotorDrv_GetDirection() == MDD_CCW) {
 			//AngChk.y = (short)(0.00002 * 134 * 134 * 134 +
 			//		-0.002 * 134 * 134 +
@@ -20729,7 +20731,7 @@ void UI_AngleMeasure_CheckCurrentSensitivity(void)
 	else {
 		if ((RunWnd.angle- AngChk.angle) < ANGLE_MIN_DEG) return;
 	}
-
+      
 	AngChk.diff = cur-AngChk.prevCur;
 #if 1 // current monitor
 		//temp = MotorDrv_GetCurrent();
@@ -20784,7 +20786,11 @@ void UI_AngleMeasure_CheckCurrentSensitivity(void)
 #endif
 
 	if (AngChk.diff > AngChk.gap) {
+      AngChk.checkCnt++;
+      if (AngChk.checkCnt > 5) {
+        AngChk.checkCnt = AngChk.checkCnt = 0;
 		AngChk.sameCnt++;
+      }
 		if (AngChk.sameCnt > 3 && UI_Time.tmp3_ms == 0) {
 			MotorDrv_SetFlagSensCurrent(0);
 			AngChk.runOne = 0;
