@@ -316,12 +316,9 @@ void EXTI15_10_IRQHandler(void)
   /* USER CODE BEGIN EXTI1_IRQn 0 */
 
   /* USER CODE END EXTI1_IRQn 0 */
-	if (EXTI_GetITStatus(EXTI_Line12) != RESET) {
-		/* Do your stuff when PB12 is changed */
-		HAL_GPIO_EXTI_Callback(GPIO_PIN_12);
-		/* Clear interrupt flag */
-		EXTI_ClearITPendingBit(EXTI_Line12);
-	}
+	HAL_GPIO_EXTI_Callback(GPIO_PIN_12);
+	/* Clear interrupt flag */
+	__HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_12);
   /* USER CODE BEGIN EXTI1_IRQn 1 */
 
   /* USER CODE END EXTI1_IRQn 1 */

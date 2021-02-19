@@ -49,6 +49,7 @@ source
 #define A3930_FET_LOW_LOAD_CURRENT				0x00000001
 
 #define MDRV_TIMER_MAX_NUM						2
+#define MDrV_HALL_SPEED_BUF_NUM					5
 //
 
 /* Private typedef -----------------------------------------------------------*/
@@ -71,6 +72,16 @@ typedef struct _tagMOTOR_DRIVER_INFO {
 	uint16_t driverICErrCnt;
 	//uint16_t limitPauseTime;
 	uint8_t vibCnt;
+#ifdef USE_MOTOR_CTRL_PJG
+	uint8_t encDir;
+	struct {
+		uint16_t buf[MDrV_HALL_SPEED_BUF_NUM];
+		uint8_t head;
+		uint8_t tail;
+		uint16_t speed;
+		uint32_t sum;
+	} hallSpeed;
+#endif
 	struct {
 		//uint16_t time;
 		uint8_t angle;
@@ -92,10 +103,12 @@ typedef struct _tagMOTOR_DRIVER_INFO {
 	}timer;
 	MOVING_AVG I_mvAvg;
 	uint32_t I_mvAvgBuf[MTR_MOVE_AVG_BUF_SIZE];
+#ifdef USE_MOTOR_CTRL_PJG
 	struct {
 		uint32_t period;
 		uint32_t duty;
 	}driver;
+#endif
 	union {
 		uint16_t all;
 		struct {
@@ -109,7 +122,8 @@ typedef struct _tagMOTOR_DRIVER_INFO {
 			unsigned short 		runOne				: 1;
 			unsigned short 		homeIn				: 1;
 			unsigned short 		standbyCurrent		: 1;
-			unsigned char 		reserved			: 6;
+			unsigned char 		boot				: 1;
+			unsigned char 		reserved			: 5;
 		}b;
 	}f;
 }MOTOR_DRIVER_INFO;

@@ -69,6 +69,7 @@ source
 #define DISP_NUM_7P_100_POS			0
 #define DISP_NUM_7P_10_POS			14
 #define DISP_NUM_7P_1_POS			(DISP_NUM_9P_10_POS*2)
+#define DISP_NUM_5P_100_POS			0
 #define DISP_NUM_5P_10_POS			12
 #define DISP_NUM_5P_1_POS			(DISP_NUM_5P_10_POS*2)
 #define DISP_NUM_5R_9P_1000_POS		0
@@ -770,6 +771,7 @@ struct {
 	uint16_t cnt;
 	uint8_t motorSpeed;
 	uint16_t maxCurrent[PMT_STEP_MAX][MS_SPEED_MAX];
+	int16_t deg[PMT_STEP_MAX][MS_SPEED_MAX];
 	uint32_t curCurrent;
 	uint32_t oldCurrent;
 	uint8_t massStep;
@@ -3083,7 +3085,7 @@ void UI_DisplayNumber(char font, int x, int  y, int num, uint8_t pos)
 //숫자 최대 3자리 표현(-포함)
 void UI_DisplayDecimal(char font, uint8_t pos, int x, int y, short num)
 {
-	char temp, temp2;
+	char temp, temp2, temp3;
 	
 	if (font == UI_DISP_NUM_FNT5) {	
 		if (pos > DISP_NUM_SDISP_SAME_TIME) return;
@@ -3093,7 +3095,20 @@ void UI_DisplayDecimal(char font, uint8_t pos, int x, int y, short num)
 	}
 
 	if(num > 999){
-		return;
+		temp = num%1000;
+		temp2 = temp%100;
+		temp3 = temp2%10;
+		UI_DisplayNumber(font, x, y, num/1000, pos+3);
+		if (font == UI_DISP_NUM_FNT5) {
+			UI_DisplayNumber(font, x+DISP_NUM_5P_10_POS*1, y, temp/100, pos+2);
+			UI_DisplayNumber(font, x+DISP_NUM_5P_10_POS*2, y, temp2/10, pos+1);
+			UI_DisplayNumber(font, x+DISP_NUM_5P_10_POS*3, y, temp3, pos+0);
+		}
+		else {
+			UI_DisplayNumber(font, x+DISP_NUM_9P_10_POS*1, y, temp/100, pos+1);
+			UI_DisplayNumber(font, x+DISP_NUM_9P_10_POS*2, y, temp2/10, pos+1);
+			UI_DisplayNumber(font, x+DISP_NUM_9P_10_POS*3, y, temp3, pos+0);
+		}
 	}
 	else if (num < -99) {
 	}          
@@ -3720,8 +3735,53 @@ void UI_SetSensitivityByCalibrationValue(uint16_t  __packed value[][MS_SPEED_MAX
 	*/
 
 #ifdef USE_CALIB_ONLY_0KG
+	for (j = 0; j < MS_SPEED_MAX; j++) {
+        Product_Calib.maxCurrent[0][j] = value[0][j];
+    }
+
 	for (i = 0; i < SL_LEVEL_MAX; i++) {
 		for (j = 0; j < MS_SPEED_MAX; j++) {
+			#if 1
+			if (j == 0) {
+				Motor_OverCurTbl[SL_LEVEL_MAX-i-1][j] = value[0][j] + (uint16_t)((float)18.773*(float)(i+1)*(float)(i+1) +
+														27.536*(float)(i+1) + 1.2727);
+			}
+			else if (j == 1) {
+				Motor_OverCurTbl[SL_LEVEL_MAX-i-1][j] = value[0][j] + (uint16_t)((float)11.977*(float)(i+1)*(float)(i+1) +
+														90.141*(float)(i+1) + -23.341);
+			}
+			else if (j == 2) {
+				Motor_OverCurTbl[SL_LEVEL_MAX-i-1][j] = value[0][j] + (uint16_t)((float)4.6364*(float)(i+1)*(float)(i+1) +
+														141*(float)(i+1) + -39.636);
+			}
+			/*200125
+			if (j == 0) {
+				Motor_OverCurTbl[SL_LEVEL_MAX-i-1][j] = value[0][j] + (uint16_t)((float)19.125*(float)(i+1)*(float)(i+1) +
+														21.325*(float)(i+1) + 3.125);
+			}
+			else if (j == 1) {
+				Motor_OverCurTbl[SL_LEVEL_MAX-i-1][j] = value[0][j] + (uint16_t)((float)15.688*(float)(i+1)*(float)(i+1) +
+														69.137*(float)(i+1) + -9.9375);
+			}
+			else if (j == 2) {
+				Motor_OverCurTbl[SL_LEVEL_MAX-i-1][j] = value[0][j] + (uint16_t)((float)9.5*(float)(i+1)*(float)(i+1) +
+														118.3*(float)(i+1) + -28.375);
+			}
+			*/
+			/*200110
+			if (j == 0) {
+				Motor_OverCurTbl[SL_LEVEL_MAX-i-1][j] = value[0][j] + (uint16_t)((float)12.143*(float)(i+2)*(float)(i+2) +
+														17.543*(float)(i+2) + -33.6);
+			}
+			else if (j == 1) {
+				Motor_OverCurTbl[SL_LEVEL_MAX-i-1][j] = value[0][j] + (uint16_t)((float)9.6429*(float)(i+2)*(float)(i+2) +
+														63.443*(float)(i+2) + -79.0);
+			}
+			else if (j == 2) {
+				Motor_OverCurTbl[SL_LEVEL_MAX-i-1][j] = value[0][j] + (uint16_t)((float)12.071*(float)(i+2)*(float)(i+2) +
+														73.071*(float)(i+2) + -88.6);
+			}*/
+			#else //old version set(no foot board, aliminum link)
 			if (j == 0) {
 				Motor_OverCurTbl[SL_LEVEL_MAX-i-1][j] = value[0][j] + (uint16_t)((float)11*(float)(i+2)*(float)(i+2) +
 														-14.6*(float)(i+2) + 4);
@@ -3734,7 +3794,8 @@ void UI_SetSensitivityByCalibrationValue(uint16_t  __packed value[][MS_SPEED_MAX
 				Motor_OverCurTbl[SL_LEVEL_MAX-i-1][j] = value[0][j] + (uint16_t)((float)5.75*(float)(i+2)*(float)(i+2) +
 														56.15*(float)(i+2) + -62.25);
 			}
-			Product_Calib.maxCurrent[i][j] = Motor_OverCurTbl[SL_LEVEL_MAX-i-1][j];
+			#endif
+               Product_Calib.maxCurrent[i+1][j] = Motor_OverCurTbl[SL_LEVEL_MAX-i-1][j];
 		}
 	}
 #else
@@ -5083,8 +5144,10 @@ void UI_Product_Process_Calibration_Measure(void)
 		if (Product_Calib.cnt >= PROD_CAL_BUF_SIZE) {
 			Product_Calib.curCurrent /= Product_Calib.cnt;
 			//Product_Calib.oldCurrent = Product_Calib.curCurrent;
-			if (Product_Calib.maxCurrent[Product_Calib.massStep][Product_Calib.motorSpeed-1] < Product_Calib.curCurrent)
+			if (Product_Calib.maxCurrent[Product_Calib.massStep][Product_Calib.motorSpeed-1] < Product_Calib.curCurrent) {
 				Product_Calib.maxCurrent[Product_Calib.massStep][Product_Calib.motorSpeed-1] = Product_Calib.curCurrent;
+				Product_Calib.deg[Product_Calib.massStep][Product_Calib.motorSpeed-1] = MotorDrv_GetPosition();
+			}
 			Product_Calib.curCurrent = 0;
 			Product_Calib.cnt = 0;
 		}
@@ -5107,7 +5170,26 @@ void UI_Product_Process_Calibration_Measure(void)
 		MotorDrv_SetTargetPosition(-2);
 		//MotorDrv_StopNoCtrl();
 		MotorDrv_SetTargetPosition(MotorDrv_GetPosition()); //pjg++180402 quickly stop
-		MotorDrv_Stop();		  
+		MotorDrv_Stop();		
+
+		if (Product_Calib.motorSpeed == 1) {
+			UI_DisplayDecimal(UI_DISP_NUM_FNT5, UI_DISP_NUM_1PLACE, 155,10, 
+				Product_Calib.deg[Product_Calib.massStep][Product_Calib.motorSpeed-1]);
+			UI_DisplayDecimal(UI_DISP_NUM_FNT5, UI_DISP_NUM_2PLACE, 185,10, 
+				Product_Calib.maxCurrent[Product_Calib.massStep][Product_Calib.motorSpeed-1]);
+		}
+		else if (Product_Calib.motorSpeed == 2) {
+			UI_DisplayDecimal(UI_DISP_NUM_FNT5, UI_DISP_NUM_3PLACE, 235,10, 
+				Product_Calib.deg[Product_Calib.massStep][Product_Calib.motorSpeed-1]);
+			UI_DisplayDecimal(UI_DISP_NUM_FNT5, UI_DISP_NUM_4PLACE, 265,10, 
+				Product_Calib.maxCurrent[Product_Calib.massStep][Product_Calib.motorSpeed-1]);
+		}
+		else if (Product_Calib.motorSpeed == 3) {
+			UI_DisplayDecimal(UI_DISP_NUM_FNT5, UI_DISP_NUM_5PLACE, 315,10, 
+				Product_Calib.deg[Product_Calib.massStep][Product_Calib.motorSpeed-1]);
+			UI_DisplayDecimal(UI_DISP_NUM_FNT5, UI_DISP_NUM_6PLACE, 345,10, 
+				Product_Calib.maxCurrent[Product_Calib.massStep][Product_Calib.motorSpeed-1]);
+		}
 		Product_Calib.motorSpeed++;
 		if (Product_Calib.motorSpeed > MS_SPEED_MAX) {
 			Product_Calib.motorSpeed = 1;
@@ -5261,6 +5343,27 @@ void UI_Product_OnBnClickedBtnCalibration(void)
 	APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i ncali.bmp,49,40\r");
 	App_SetButtonOption(RID_CALI_BTN_CALI0, BN_DISABLE);
 	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_7PLACE, 370,208, Product_Calib.motorSpeed+1, 1);
+
+	UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 155,5, 0);
+	UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 165,5, 1);
+	UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 175,5, 2);
+	UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 185,5, 3);
+	UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 195,5, 4);	
+	UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 205,5, 5);
+	
+	UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 235,5, 6);
+	UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 245,5, 7);
+	UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 255,5, 8);
+	UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 265,5, 9);
+	UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 275,5, 10);
+	UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 285,5, 11);
+	
+	//UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 315,5, 12);
+	//UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 325,5, 13);
+	//UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 340,10, 14);
+	//UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 350,10, 15);
+	//UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 360,10, 16);
+	//UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 370,10, 17);
 }
 
 void UI_Product_OnBnClickedBtnCalibration1(void)
@@ -5275,6 +5378,27 @@ void UI_Product_OnBnClickedBtnCalibration1(void)
 	APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i ret.bmp,362,46\r");
 	App_SetButtonOption(RID_CALI_BTN_RETURN, BN_PUSHED);
 	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_7PLACE, 370,208, 4, 1);
+
+	UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 155,5, 0);
+	UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 165,5, 1);
+	UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 175,5, 2);
+	UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 185,5, 3);
+	UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 195,5, 4);	
+	UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 205,5, 5);
+	
+	UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 235,5, 6);
+	UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 245,5, 7);
+	UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 255,5, 8);
+	UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 265,5, 9);
+	UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 275,5, 10);
+	UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 285,5, 11);
+	
+	//UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 315,5, 12);
+	//UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 325,5, 13);
+	//UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 340,10, 14);
+	//UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 350,10, 15);
+	//UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 360,10, 16);
+	//UI_DisplayClearNumber(UI_DISP_NUM_FNT7, 370,10, 17);
 }
 
 void UI_Calibration_OnBnClickedBtnReturn(void)
@@ -5333,6 +5457,9 @@ void UI_Calibration_OnBnClickedBtnReturn(void)
 
 void UI_Calibration_OnBnClickedBtnBack(void)
 {
+	MotorDrv_SetTargetPosition(MotorDrv_GetPosition()); //pjg++180402 quickly stop
+	MotorDrv_Stop();		  
+	App_SetUIProcess(UI_ProcessNull);
 	UI_Product_Create();
 }
 
@@ -5342,7 +5469,7 @@ void UI_Calibration_Init(void)
 			GetNumFromString(pBtnInfo[RID_CALI_BTN_CALI0*2], ',', 1),
 			GetNumFromString(pBtnInfo[RID_CALI_BTN_CALI0*2], ',', 2),
 			108,45, hParent, RID_CALI_BTN_CALI0, 0);
-	/*
+#ifndef USE_CALIB_ONLY_0KG
 	API_CreateWindow("", pBtnInfo[RID_CALI_BTN_CALI5*2], BS_PUSHBUTTON, 
 			GetNumFromString(pBtnInfo[RID_CALI_BTN_CALI5*2], ',', 1),
 			GetNumFromString(pBtnInfo[RID_CALI_BTN_CALI5*2], ',', 2),
@@ -5359,7 +5486,7 @@ void UI_Calibration_Init(void)
 			GetNumFromString(pBtnInfo[RID_CALI_BTN_CALI20*2], ',', 1),
 			GetNumFromString(pBtnInfo[RID_CALI_BTN_CALI20*2], ',', 2),
 			108,45, hParent, RID_CALI_BTN_CALI20, 0);
-	*/
+#endif
 	API_CreateWindow("", pBtnInfo[RID_CALI_BTN_RETURN*2], BS_PUSHBUTTON, 
 			GetNumFromString(pBtnInfo[RID_CALI_BTN_RETURN*2], ',', 1),
 			GetNumFromString(pBtnInfo[RID_CALI_BTN_RETURN*2], ',', 2),
@@ -5519,7 +5646,7 @@ void UI_SystemInit_Timer(uint16_t nIDEvent)
 		case 1:
 		  	//temp = metainfo[4];
 			MotorDrv_Init2(); //home-in error because lcd wait time;
-			MotorDrv_SetOverCurrent(STANDBY_CHK_CURRENT); //prevent that error is occur in booting
+			MotorDrv_SetOverCurrent(RUN_CHK_OVERCURRENT); //prevent that error is occur in booting
 
 			//USBDisk_UnMount();
 			//USBDisk_UnLink();
@@ -5722,6 +5849,7 @@ void UI_SystemInit_Timer(uint16_t nIDEvent)
 			MotorDrv_SetMotorSpeedVarAddr((uint16_t *)&SpdTmWnd.speed); //pjg++180102
 			//MotorDrv_SetOverCurrent(1000); //ori
 			MotorDrv_SetSensCurrent(STANDBY_SENS_CURRENT);
+			MotorDrv_SetOverCurrent(STANDBY_CHK_CURRENT); //prevent that error is occur in booting
 			break;
 		case 9:
 			UI_InitVariable();
@@ -5997,7 +6125,7 @@ void  UI_Loading_Process(void)
 	//if (!UI_CheckMotorStatus()) return;
 	
 	//home-in switch break
-	#ifndef USE_JIG_TEST_MODE
+	#if 0//ndef USE_JIG_TEST_MODE
 	if (UI_Time.tmp_sec > HOME_IN_TOTAL_TIME) {
 		MotorDrv_StopHome();
 		//App_KillTimer(TIMER_ID_1);
@@ -7870,7 +7998,7 @@ void UI_Run_Process_HomeIn(void)
 		UI_Run_DisplayValue();
 		API_ChangeHMenu(hParent, RID_RN_BTN_STOP, RID_RN_BTN_PLAY);
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)pBtnInfo[RID_RN_BTN_PLAY*2]);
-		App_SetButtonOption(RID_RN_BTN_HOME, BN_PUSHED);
+		App_SetButtonOption(RID_RN_BTN_HOME+Setup2.language, BN_PUSHED);
 		//App_SetButtonOption(RID_RN_BTN_RIGHT, BN_PUSHED);
 		App_SetButtonOption(RID_RN_BTN_LEFT, BN_PUSHED);
 		App_SetButtonOption(RID_RN_BTN_SETUP, BN_PUSHED);
@@ -8143,7 +8271,7 @@ void UI_Run_OnBnClickedBtnPause(void)
 	UI_LED_Control(LM_PAUSE);
 	//PInfoWnd2.pi.totalRepeat = Total_Counter;
 
-	App_SetButtonOption(RID_RN_BTN_HOME, BN_PUSHED);
+	App_SetButtonOption(RID_RN_BTN_HOME+Setup2.language, BN_PUSHED);
 	//App_SetButtonOption(RID_RN_BTN_RIGHT, BN_PUSHED);
 	App_SetButtonOption(RID_RN_BTN_LEFT, BN_PUSHED);
 	App_SetButtonOption(RID_RN_BTN_SETUP, BN_PUSHED);
@@ -8181,7 +8309,7 @@ void UI_Run_OnBnClickedBtnPlay(void)
 
 	App_SetButtonOption(RID_RN_BTN_LEFT, BN_DISABLE);
 	//App_SetButtonOption(RID_RN_BTN_RIGHT, BN_DISABLE);
-	App_SetButtonOption(RID_RN_BTN_HOME, BN_DISABLE);
+	App_SetButtonOption(RID_RN_BTN_HOME+Setup2.language, BN_DISABLE);
 	App_SetButtonOption(RID_RN_BTN_SETUP, BN_DISABLE);
 	App_SetButtonOption(RID_RN_BTN_PLAY, BN_DISABLE);
 	App_SetButtonOption(RID_RN_BTN_STOP, BN_DISABLE);
@@ -10726,9 +10854,29 @@ void UI_PiLoad_OnBnClickedBtnRight(void)
 	#endif
 }
 
+void UI_PiLoad_ProcessPINumberDisp(void)
+{
+	loading++;
+	if (loading > 20) {
+		App_SetUIProcess(UI_ProcessNull);
+		UI_PiReset_Create();
+	}
+}
+
 void UI_PiLoad_OnBnClickedBtnReset(void)
 {
-	UI_PiReset_Create();
+	uint32_t temp;
+	
+	loading = 0;
+	temp = 0;
+	//if (!loginInfo.cnt) return;
+	temp = ConvertString2U32(loginInfo.pwdBuf, loginInfo.cnt);
+	//if (!temp) return;
+	PInfoWnd2.id = temp;
+	APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)DoubleBufStartCmd);
+	UI_PINumber_Display();
+	APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)DoubleBufEndCmd);
+	App_SetUIProcess(UI_PiLoad_ProcessPINumberDisp);
 }
 
 void UI_PiLoad_OnBnClickedBtnPI1(void)
@@ -11337,7 +11485,7 @@ void UI_PiLoad_Init(void)
 			App_SetButtonOption(RID_PLD_BTN_RESETC, BN_PUSHED);
 		}
 	}
-	UI_PINumber_Display();
+	//UI_PINumber_Display();
 	APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)DoubleBufEndCmd);
 
 	//UI_PINumber_Display();
@@ -20407,8 +20555,7 @@ void UI_AngleMeasure_Process_HomeIn(void)
 		Option.temp16 = 200;
 		UI_AngleMeasure_SetAngle_Pic(AngleWnd.exAngle,RunWnd.angle);
 		App_SetButtonOption(RID_ANG_BTN_LEFT, BN_PUSHED);
-		//App_SetButtonOption(RID_ANG_BTN_RIGHT, BN_PUSHED);
-		//App_SetButtonOption(RID_RN_BTN_RIGHT, BN_PUSHED);
+		App_SetButtonOption(RID_ANG_BTN_RIGHT, BN_PUSHED);
 		App_SetButtonOption(RID_ANG_BTN_HOME+Setup2.language, BN_PUSHED);
 		//App_SetButtonOption(RID_ANG_BTN_SETUP, BN_PUSHED);
 		//App_SetButtonOption(RID_ANG_BTN_STOP, BN_PUSHED);
@@ -20472,7 +20619,7 @@ void UI_AngleMeasure_OnBnLongClickedBtnHome(void)
 	//KeyDrv_Disable(1);	
 
 	App_SetUIProcess(UI_AngleMeasure_Process_HomeIn); //pjg++171018
-	MotorDrv_SetOverCurrent(STANDBY_CHK_CURRENT); //pjg++190904 : to prevent that motor is break when fast press machine
+	MotorDrv_SetOverCurrent(STANDBY_CHK_CURRENT); //pjg++190904 : to prevent that motor is broken when fast press machine
 }
 
 void UI_AngleMeasure_SetRehabMode(void)
@@ -20499,6 +20646,43 @@ void UI_AngleMeasure_SetRehabMode(void)
 			GetNumFromString(pBtnInfo[RID_ANG_BTN_FLM*2], ',', 2),
 			58, 46, hParent, RID_ANG_BTN_FLM, 0);
 
+	if ((SysInfo.meaCnt >= 1) || (Exercise.dataCnt > 0)) {
+		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE, 38,77, SaveExeInfoV2.spm.mi.exangle-5,3);
+		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 363,77, SaveExeInfoV2.spm.mi.flangle-5,3);
+		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i meacom.png,18,69\r");
+		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i meacom.png,346,69\r");
+		if ((SaveExeInfoV2.spm.mi.exangle-5) >= Setup3.AutoAngValue) {
+			AngleWnd.exAngle = SaveExeInfoV2.spm.mi.exangle - 5 - Setup3.AutoAngValue;
+			if (AngleWnd.exAngle < RUN_ANGLE_MIN) AngleWnd.exAngle = RUN_ANGLE_MIN;
+			UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_3PLACE, 38,125,AngleWnd.exAngle,3);
+		}
+		else {
+            AngleWnd.exAngle = SaveExeInfoV2.spm.mi.exangle - 5 - Setup3.AutoAngValue;
+			if (AngleWnd.exAngle < RUN_ANGLE_MIN) AngleWnd.exAngle = RUN_ANGLE_MIN;
+			UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_3PLACE, 38,125,AngleWnd.exAngle,3);
+		}
+		AngleWnd.flAngle = SaveExeInfoV2.spm.mi.flangle - 5 + Setup3.AutoAngValue;
+		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_4PLACE, 363,125,AngleWnd.flAngle,3);
+		if (SysInfo.meaCnt >= 1) App_SetButtonOption(RID_ANG_BTN_REH+Setup2.language, BN_DISABLE);
+		//APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)pImgNameInfo[IMG_REHB_DIS][Setup2.language]);
+	}
+	else {
+		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE, 38,77,0,3);//AngleWnd.exAngle,3);
+		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 363,77,RunWnd.angle,3);//AngleWnd.flAngle,3);
+		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_3PLACE, 38,125,AngleWnd.exAngle,3); //pjg<>200110
+		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_4PLACE, 363,125,AngleWnd.flAngle,3); //pjg<>200110
+		//APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nright.bmp,324,222\r");
+		//App_SetButtonOption(RID_ANG_BTN_RIGHT, BN_DISABLE);
+		//APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,16,166\r");
+		//App_SetButtonOption(RID_ANG_BTN_EXP, BN_DISABLE);
+		//APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,77,166\r");
+		//App_SetButtonOption(RID_ANG_BTN_EXM, BN_DISABLE);
+		//APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,345,166\r");
+		//App_SetButtonOption(RID_ANG_BTN_FLP, BN_DISABLE);
+		//APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,405,166\r");
+		//App_SetButtonOption(RID_ANG_BTN_FLM, BN_DISABLE);
+	}
+
 	if(AngleWnd.exAngle > RUN_ANGLE_MIN){
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i minus.bmp,77,166\r");
 		App_SetButtonOption(RID_ANG_BTN_EXM, BN_PUSHED);
@@ -20523,42 +20707,6 @@ void UI_AngleMeasure_SetRehabMode(void)
 		App_SetButtonOption(RID_ANG_BTN_EXP, BN_DISABLE);
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,405,166\r");
 		App_SetButtonOption(RID_ANG_BTN_FLM, BN_DISABLE);
-	}
-	if ((SysInfo.meaCnt >= 1) || (Exercise.dataCnt > 0)) {
-		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE, 38,77, SaveExeInfoV2.spm.mi.exangle-5,3);//AngleWnd.exAngle,3);
-		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 363,77, SaveExeInfoV2.spm.mi.flangle-5,3);//AngleWnd.flAngle,3);
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i meacom.png,18,69\r");
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i meacom.png,346,69\r");
-		if ((SaveExeInfoV2.spm.mi.exangle-5) >= Setup3.AutoAngValue) {
-			AngleWnd.exAngle = SaveExeInfoV2.spm.mi.exangle - 5 - Setup3.AutoAngValue;
-			if (AngleWnd.exAngle < -5) AngleWnd.exAngle = -5;
-			UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_3PLACE, 38,125,AngleWnd.exAngle,3);
-		}
-		else {
-            AngleWnd.exAngle = SaveExeInfoV2.spm.mi.exangle - 5 - Setup3.AutoAngValue;
-			if (AngleWnd.exAngle < -5) AngleWnd.exAngle = -5;
-			UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_3PLACE, 38,125,AngleWnd.exAngle,3);
-		}
-		AngleWnd.flAngle = SaveExeInfoV2.spm.mi.flangle - 5 + Setup3.AutoAngValue;
-		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_4PLACE, 363,125,AngleWnd.flAngle,3);
-		App_SetButtonOption(RID_ANG_BTN_REH+Setup2.language, BN_DISABLE);
-		//APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)pImgNameInfo[IMG_REHB_DIS][Setup2.language]);
-	}
-	else {
-		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE, 38,77,0,3);//AngleWnd.exAngle,3);
-		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 363,77,RunWnd.angle,3);//AngleWnd.flAngle,3);
-		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_3PLACE, 38,125,AngleWnd.exAngle,3); //pjg<>200110
-		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_4PLACE, 363,125,AngleWnd.flAngle,3); //pjg<>200110
-		//APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nright.bmp,324,222\r");
-		//App_SetButtonOption(RID_ANG_BTN_RIGHT, BN_DISABLE);
-		//APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,16,166\r");
-		//App_SetButtonOption(RID_ANG_BTN_EXP, BN_DISABLE);
-		//APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,77,166\r");
-		//App_SetButtonOption(RID_ANG_BTN_EXM, BN_DISABLE);
-		//APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,345,166\r");
-		//App_SetButtonOption(RID_ANG_BTN_FLP, BN_DISABLE);
-		//APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,405,166\r");
-		//App_SetButtonOption(RID_ANG_BTN_FLM, BN_DISABLE);
 	}
 }
 

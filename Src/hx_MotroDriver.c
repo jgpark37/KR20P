@@ -39,7 +39,8 @@ source
 #define MOTOR_MIN_ANGLE						-6
 #define MOTOR_OVER_CUR_CHK_CNT				3//20//200(5sec) : 1 is 10ms
 #define MOTOR_SENS_CUR_CHK_CNT				5//100
-#define MOTOR_DRV_IC_CHK_CNT				5000 //10ms unit
+#define MOTOR_DRV_IC_CHK_CNT				100//5000 //10ms unit
+#define MOTOR_DRV_PWM_VALUE_MAX				20000
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -78,6 +79,10 @@ FF1 FF2    Fault                    Action*
 */
 void MotorDrv_CheckFaultAction(void)
 {
+#ifdef USE_MOTOR_CTRL_PJG
+	FF1 = HAL_GPIO_ReadPin(FF1_GPIO_Port, FF1_Pin);
+	FF2 = HAL_GPIO_ReadPin(FF2_GPIO_Port, FF2_Pin);
+#endif
 	//ESF = 1
 	if (FF2 == 0) { //LED of D203 is turned on when FF2 is High
 		if (FF1 == 0) {
@@ -93,7 +98,7 @@ void MotorDrv_CheckFaultAction(void)
 	}
 	else {
 		//Low load current
-		if (MDrvInfo.driverICErrCnt) MDrvInfo.driverICErrCnt--;
+		if (MDrvInfo.driverICErrCnt) MDrvInfo.driverICErrCnt = 0;//--;
 	}
 }
 
@@ -144,7 +149,9 @@ void MotorDrv_CheckSensitivityCurrent()
 		}
 	}
 #else
-	if (MDrvInfo.current > MDrvInfo.sensCurrent && MDrvInfo.f.b.sensCurrent == 0 && MDrvInfo.timer.tmp_ms[1] == 0) {
+	if (MDrvInfo.current > MDrvInfo.sensCurrent &&
+		MDrvInfo.f.b.sensCurrent == 0 &&
+		MDrvInfo.timer.tmp_ms[1] == 0) {
 		MDrvInfo.sensChkCnt++;
 	}
 	else {
@@ -214,6 +221,13 @@ int32_t MotorDrv_GetTargetPosition(void)
 
 int32_t MotorDrv_GetPosition(void)
 {
+#ifdef USE_MOTOR_CTRL_PJG
+#define MOTOR_PARAM_POLES				7
+#define MOTOR_PARAM_HALL_TICKS			6
+#define MOTOR_PARAM_HALL_TICK_NUM		(MOTOR_PARAM_POLES*MOTOR_PARAM_HALL_TICKS)
+
+	*MDrvInfo.curAngle = (*MDrvInfo.encoder)/MOTOR_PARAM_HALL_TICK_NUM;
+#endif
 	//MDrvInfo.curAngle = motorangle;
 	return *MDrvInfo.curAngle;
 }
@@ -490,7 +504,7 @@ void MotorDrv_SetSpeed(uint16_t speed)
 		*MDrvInfo.speed = MDrvInfo.step/10;
 		#ifdef USE_MOTOR_CTRL_PJG
 		if (*MDrvInfo.speed == 0) MDrvInfo.driver.period = 0;
-		else MDrvInfo.driver.period = 20000;//16800 / (*MDrvInfo.speed);
+		else MDrvInfo.driver.period = MOTOR_DRV_PWM_VALUE_MAX;//16800 / (*MDrvInfo.speed);
 		MotorDrv_SetPwm(MDrvInfo.driver.period);
 		#endif
 	}
@@ -714,6 +728,7 @@ void MotorDrv_SetPwm(uint32_t value)
 	TIM1->ARR = value;
 }
 
+#ifdef USE_MOTOR_CTRL_PJG
 //set duty
 //param : duty x 10
 void MotorDrv_SetDuty(uint32_t duty)
@@ -723,6 +738,7 @@ void MotorDrv_SetDuty(uint32_t duty)
 	temp = (MDrvInfo.driver.period * (1000-duty))/1000;
 	TIM1->CCR1 = temp;
 }
+#endif
 
 void MotorDrv_SetTimerValue(uint8_t num, uint16_t value)
 {
@@ -782,20 +798,53 @@ void MotorDrv_Process(void)
 //void EXTI15_10_IRQHandler(void) // 10,11,12,13,14,15 핀 인터럽트 함수입니다
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-	if (GPIO_Pin == DIRO_Pin) //DS_INT/ALM of UR25 Motor drv
-	{
-		if (HAL_GPIO_ReadPin(DIRO_GPIO_Port, DIRO_Pin) == GPIO_PIN_RESET) {
-			//Bit 4 DIR: Direction
-		  	//0: Counter used as upcounter
-		  	//1: Counter used as downcounter */
-		  	TIM3->CR1 |= 0x10; // 1
-		}
-		else {
-			TIM3->CR1 &= ~0x10; // 0
-		}
-		//HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_13); 
+	__HAL_GPIO_EXTI_CLEAR_IT(GPIO_Pin);
+	if (HAL_GPIO_ReadPin(DIRO_GPIO_Port, DIRO_Pin) == GPIO_PIN_RESET) {
+		//Bit 4 DIR: Direction
+	  	//0: Counter used as upcounter
+	  	//1: Counter used as downcounter */
+	  	//TIM3->CR1 |= 0x10; // 1
+	  	MDrvInfo.encDir = 0;
+	}
+	else {
+		//TIM3->CR1 &= ~0x10; // 0
+		MDrvInfo.encDir = 1;
 	}
 }
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+	uint32_t temp;
+	
+	if (htim->Instance == TIM3) {
+		//temp = TIM3->CNT;
+		if (MDrvInfo.encDir == 1) (*MDrvInfo.encoder)--;
+		else (*MDrvInfo.encoder)++;
+		MDrvInfo.hallSpeed.buf[MDrvInfo.hallSpeed.head] = TIM7->CNT;
+		MDrvInfo.hallSpeed.sum += MDrvInfo.hallSpeed.buf[MDrvInfo.hallSpeed.head];
+		MDrvInfo.hallSpeed.tail = MDrvInfo.hallSpeed.head + 1;
+		if (MDrvInfo.hallSpeed.tail >= MDrV_HALL_SPEED_BUF_NUM) {
+			MDrvInfo.hallSpeed.tail = 0;
+		}
+		//else {
+		//	MDrvInfo.hallSpeed.tail = MDrvInfo.hallSpeed.head + 1;
+		//}
+		MDrvInfo.hallSpeed.head++;
+		if (MDrvInfo.hallSpeed.head >= MDrV_HALL_SPEED_BUF_NUM) MDrvInfo.hallSpeed.head = 0;
+		MDrvInfo.hallSpeed.sum -= MDrvInfo.hallSpeed.buf[MDrvInfo.hallSpeed.tail];
+		MDrvInfo.hallSpeed.speed = MDrvInfo.hallSpeed.sum/MDrV_HALL_SPEED_BUF_NUM;
+		TIM7->CNT = 0;
+		HAL_GPIO_TogglePin(GPIOB, LED_Pin);
+	}
+	else if (htim->Instance == TIM7) {
+		//temp = TIM3->CNT;
+		//*MDrvInfo.encoder = temp;
+		//tim7Interval = temp - tim7Old;
+		//tim7Old = temp;
+		//TIM7->CNT = 0;
+	}
+}
+
 
 int32_t oldEncoder;
 void MotorDrv_Thread(void)
@@ -804,7 +853,9 @@ void MotorDrv_Thread(void)
 
 	curEncoder = TIM1->CNT;
 	if (MDrvInfo.f.b.dir == MDD_CCW) {
-		if (oldEncoder > curEncoder) temp = oldEncoder - curEncoder;
+		if (oldEncoder > curEncoder) {
+			temp = oldEncoder - curEncoder;
+		}
 		else {
 			
 		}
@@ -820,7 +871,7 @@ void MotorDrv_Thread(void)
 
 void MotorDrv_Smart(void)
 {
-	#ifdef USE_MOTOR_CTRL_PJG
+#ifdef USE_MOTOR_CTRL_PJG
 	GPIO_InitTypeDef GPIO_InitStruct = {0};
 
 	HAL_GPIO_WritePin(RESET_GPIO_Port, RESET_Pin, GPIO_PIN_RESET);                                    // M_RESET LOW
@@ -844,10 +895,11 @@ void MotorDrv_Smart(void)
 	MDrvInfo.f.b.dir = MDD_CCW;
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
 	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1); 
-	MotorDrv_SetSpeed(1);
-	MotorDrv_SetDuty(100);
+	//HAL_GPIO_WritePin(DIR_GPIO_Port, DIR_Pin, GPIO_PIN_RESET);                                        // DIR LOW
+	//MotorDrv_SetSpeed(1);
+	//MotorDrv_SetDuty(50);
 	HAL_ADC_Start_DMA(&hadc1,ADC_value,1);
-	#else
+#else
 	Motor_Init();
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1); //pjg++200109
 	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1); //pjg++200109
@@ -861,7 +913,8 @@ void MotorDrv_Smart(void)
 	Run_mode = 0;
 	Home_mode = 0;
 	Task_TIMER = 0;
-	#endif
+	//HAL_GPIO_WritePin(ESF_GPIO_Port, ESF_Pin, GPIO_PIN_RESET);                                          // ESF LOW  
+#endif
 
 }
 
@@ -890,7 +943,10 @@ void MotorDrv_Init2(void)
 	//MDrvInfo.SensChk.mode = 0;
 	MotorDrv_SetDirection(MDD_CCW);
 	MovingAvg_Init(&MDrvInfo.I_mvAvg, MDrvInfo.I_mvAvgBuf, MTR_MOVE_AVG_BUF_SIZE, 0);
-
+//#ifdef USE_MOTOR_CTRL_PJG
+	FF1 = 1;
+	FF2 = 1;
+//#endif
 }
 
 

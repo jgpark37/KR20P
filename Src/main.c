@@ -315,8 +315,13 @@ int main(void)
   MX_USB_HOST_Init();
   MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
+#ifdef USE_MOTOR_CTRL_PJG
+	HAL_TIM_Base_Start(&htim7);
+	HAL_TIM_Base_Start_IT(&htim3);
+#else
 	HAL_TIM_Base_Start_IT(&htim7);
 	HAL_TIM_Base_Start(&htim3);
+#endif
 	//#if 0//ndef USE_MOTOR_CTRL_PJG
 	//HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
 	//HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1); 
@@ -699,7 +704,11 @@ static void MX_TIM3_Init(void)
   htim3.Instance = TIM3;
   htim3.Init.Prescaler = 0;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 65535;//10000;
+  #ifdef USE_MOTOR_CTRL_PJG
+  htim3.Init.Period = 1;
+  #else
+  htim3.Init.Period = 10000;
+  #endif
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
@@ -746,7 +755,11 @@ static void MX_TIM7_Init(void)
   htim7.Instance = TIM7;
   htim7.Init.Prescaler = 83;
   htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
+#ifdef USE_MOTOR_CTRL_PJG
   htim7.Init.Period = 99;
+#else
+  htim7.Init.Period = 99;
+#endif
   htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
   {
