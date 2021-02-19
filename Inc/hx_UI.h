@@ -46,7 +46,7 @@ typedef struct _tagUI_TIME {
 	uint32_t tmp_ms;	//variable. use in limit pause
 	uint32_t tmp2_ms;	//variable. use in progress
 	uint32_t tmp3_ms;	//variable. use in sens current
-	uint32_t tmp4_ms;	//variable. use in progress / in anglemeasure / in motor cmd send time
+	uint32_t tmp4_ms;	//variable. use in progress / in anglemeasure / in SubVibration / in product cal / 
 	uint32_t tmp5_ms;	//variable. use in key/touch repeat
 	uint32_t tmp_sec;	//variable
 }UI_TIME;

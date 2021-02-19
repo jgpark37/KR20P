@@ -141,6 +141,22 @@ uint32_t USBDisk_OpenWrite(char *name)
 	return 1;
 }
 
+uint32_t USBDisk_OpenAlwaysWrite(char *name)
+{
+	FRESULT rv;
+	
+	/*open or create file for writing*/
+	rv = f_open(&USBHFile, name, FA_OPEN_ALWAYS | FA_WRITE);
+	if (rv != FR_OK  ) {
+		//while(1);
+		return 0;
+	}
+
+	//if (USBDisk_set_timestamp(name, 2017, 6, 15, 10, 58, 0) != FR_OK) return 0;
+	
+	return 1;
+}
+
 uint32_t USBDisk_OpenRead(char *name)
 {
 	FRESULT rv;

@@ -163,23 +163,35 @@ uint32_t Multiplier(int x, int n)
     return temp;
 }
 
-void ConvertLong2String(int32_t data, char *buf, uint8_t maxbuf)
+uint8_t ConvertLong2String(int32_t data, char *buf, uint8_t maxbuf)
 {
-	uint8_t temp;
-	int i;
+	uint16_t temp;
+	int i, cnt;
 
     i = 0;
-	if (data < 0) maxbuf--;
-	buf[0] = data%10 + '0';
+    cnt = 0;
+	if (data < 0) {
+		maxbuf--;
+		buf[0] = '-';
+		data *= -1;
+		cnt = 1;
+	}
+	for (i = 0; i < 10; i++) {
+		temp = data/Multiplier(10, i);
+		cnt++;
+		if (temp < 10) break;		
+	}
 	if (maxbuf > 1) {
-		for (i = 1; i < 10; i++) {
+		for (i = cnt-1; i >= 0; i--) {
 			if (i >= maxbuf) break;
 			temp = data/Multiplier(10, i);
-			if (temp == 0) break;
-			buf[i] = temp + '0';
+			//if (temp == 0) break;
+			data -= temp*Multiplier(10, i);
+			buf[cnt-i-1] = temp + '0';
 		}
 	}
-	if (data < 0) buf[i] = '-';
+	//if (data < 0) buf[i] = '-';
+	return (cnt);
 }
 
 void ConvertFloat2String(float data, char *buf, uint8_t maxbuf)

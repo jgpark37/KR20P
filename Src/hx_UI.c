@@ -48,12 +48,13 @@ source
 /* Private define ------------------------------------------------------------*/
 //#define USE_DEBUG_MODE
 #define USE_CALIB_ONLY_0KG					//pjg++200110
+#define USE_QC_LIFE_TEST_SAVE_CUR			//pjg++200131 : current save to usb every 60min, run time max is 999min, display usb check message
 //
 #define PATIENT_NUM					84
 #define PATIENT_INFO_SIZE			2048	// eeprom 256KByte
 #define PATIENT_INFO_32_SIZE		2048	//mcu flash
 #define EEP_LOGIN_INFO_SAVE_ADDR	0
-#define EEP_SETUP_SAVE_ADDR		1024
+#define EEP_SETUP_SAVE_ADDR			1024
 #define DISP_NUM_BUF_SIZE			17		// "i 0.bmp,123,456\r"
 #define DISP_BLANK_NUM_BUF_SIZE		20		// "i bnk.bmp,123,456\r"
 #define DISP_BLANK_ALL_NUM_BUF_SIZE	20	// "i bnk2.bmp,123,456\r"
@@ -110,14 +111,17 @@ source
 //#define RUN_SPEED_MAX				3
 #define HOME_IN_TOTAL_TIME			70
 #define PROD_CAL_BUF_SIZE			5		//product calibration buffer size
-#define HOME_IN_INIT_POS			15
+#define HOME_IN_INIT_POS			10//15 //pjg<>200205 10 is adjust deg to box package
 
 #define EXERCISE_INFO_NUM			10//375//480//(480:1.6month, 85 person, 256Kbyte memory)2//0
 
 #define RUN_ANGLE_MAX				140
 #define RUN_ANGLE_MIN				-5
 #define ANGLE_MOVE_GAP				5
-#define ANGLE_MIN_GAP				5
+#define ANGLE_MIN_GAP				15
+#define ANGLE_MIN_DEG				5
+#define SAVE_OFFSET_VALUE			5
+#define RUN_MIN_EXE_ANGLE			25
 
 #define LOGIN_GUEST_PWD_LEN			4
 #define LOGIN_USER_PWD_LEN			4
@@ -145,7 +149,7 @@ source
 #define PRODUCT_MEA_ANGLE_MAX		49
 #define PRODUCT_MEA_ANGLE_MIN		-4
 //
-#define SAVE_EXE_INFO_MARK			0xAA
+#define SAVE_EXE_INFO_MARK			0x55AA
 //
 #define EEPROMDISK_DRIVE			'0'
 #define EEPROMDISK_DIV			    ":/"
@@ -828,6 +832,15 @@ struct {
 }Option;
 
 uint8_t amSensitivity[AMD_MAX][AMSL_LEVEL_MAX][AMVT_MAX];
+
+#ifdef USE_QC_LIFE_TEST_SAVE_CUR
+struct {
+	uint16_t curBuf[29];
+	uint16_t cnt;
+	uint8_t fStart;
+	uint8_t fSave;
+}QCLife;
+#endif
 
 extern uint16_t	MOTOR_STATE;
 extern uint16_t  Current_Angle, Min_Angle, Max_Angle, Total_Counter;
@@ -3469,11 +3482,11 @@ void UI_InitSetupVariable(void)
 	//Setup2.sndGuid2  = BST_CHECKED;
 	//Setup2.led_en = BST_CHECKED;						   							 
 	Setup3.PDeg = 5;	
-	Setup3.PTm = 1;	
+	Setup3.PTm = 5;//1;	//pjg<>200205
 	Setup3.LP = 3;
 	Setup3.VDeg = 3;
 	Setup3.VCnt = 3;
-	Setup3.sensitivity = 4;
+	Setup3.sensitivity = 2;//4; //15kg
 	//Setup2.sensitivity = 4;	
 	//Setup2.hiAngle = 0;
 	#ifdef USE_DEBUG_MODE
@@ -3741,18 +3754,18 @@ void UI_SetSensitivityByCalibrationValue(uint16_t  __packed value[][MS_SPEED_MAX
 
 	for (i = 0; i < SL_LEVEL_MAX; i++) {
 		for (j = 0; j < MS_SPEED_MAX; j++) {
-			#if 1
+			#if 1 //200129 : avg of 10 set
 			if (j == 0) {
-				Motor_OverCurTbl[SL_LEVEL_MAX-i-1][j] = value[0][j] + (uint16_t)((float)18.773*(float)(i+1)*(float)(i+1) +
-														27.536*(float)(i+1) + 1.2727);
+				Motor_OverCurTbl[SL_LEVEL_MAX-i-1][j] = value[0][j] + (uint16_t)((float)19.717*(float)(i+1)*(float)(i+1) +
+														25.997*(float)(i+1) + 3.25);
 			}
 			else if (j == 1) {
-				Motor_OverCurTbl[SL_LEVEL_MAX-i-1][j] = value[0][j] + (uint16_t)((float)11.977*(float)(i+1)*(float)(i+1) +
-														90.141*(float)(i+1) + -23.341);
+				Motor_OverCurTbl[SL_LEVEL_MAX-i-1][j] = value[0][j] + (uint16_t)((float)11.333*(float)(i+1)*(float)(i+1) +
+														93.627*(float)(i+1) + -24.9);
 			}
 			else if (j == 2) {
-				Motor_OverCurTbl[SL_LEVEL_MAX-i-1][j] = value[0][j] + (uint16_t)((float)4.6364*(float)(i+1)*(float)(i+1) +
-														141*(float)(i+1) + -39.636);
+				Motor_OverCurTbl[SL_LEVEL_MAX-i-1][j] = value[0][j] + (uint16_t)((float)5.2667*(float)(i+1)*(float)(i+1) +
+														139.6*(float)(i+1) + -37.8);
 			}
 			/*200125
 			if (j == 0) {
@@ -5647,7 +5660,8 @@ void UI_SystemInit_Timer(uint16_t nIDEvent)
 		  	//temp = metainfo[4];
 			MotorDrv_Init2(); //home-in error because lcd wait time;
 			MotorDrv_SetOverCurrent(RUN_CHK_OVERCURRENT); //prevent that error is occur in booting
-
+			//for (fr = 500; fr < 900; fr++)
+			//	ConvertLong2String(fr, &CommonBuf[0], 5);
 			//USBDisk_UnMount();
 			//USBDisk_UnLink();
 			//USBDisk_Link();
@@ -5655,6 +5669,7 @@ void UI_SystemInit_Timer(uint16_t nIDEvent)
 			EEPROMDrv_Init(&hspi3);
 			break;
 		case 2:
+#ifndef USE_JIG_TEST_MODE
 			if (!EEPROMDisk_Link()) {
 				App_SetUIProcess(UI_ProcessNull);
 				API_SetErrorCode(EC_EEP_LINK, EDT_DISP_HALT);
@@ -5713,12 +5728,14 @@ void UI_SystemInit_Timer(uint16_t nIDEvent)
 			}
 			EEPROMDisk_UnMount();
 			EEPROMDisk_UnLink();
+#endif
 			break;
 		case 3:
 			UI_InitSetupVariable(); 
 			//FlashDrv_SetTempBuf(&CommonBuf[FLASH_PAGE_SIZE16]);
 			//FlashDrv_SetParam(FLASH_PAGE_SIZE16);
 			//if (0) { //init save eeprom param data
+#ifndef USE_JIG_TEST_MODE
 			if (UI_LoadParamFromEEPROM(CommonBuf)) {
 				fssi = (SYSTEM_INFO *)CommonBuf;
 				Setup2.vol = fssi->setup2.vol;
@@ -5769,6 +5786,7 @@ void UI_SystemInit_Timer(uint16_t nIDEvent)
 				Setup3.writeTime = 0;
 				UI_SaveParamToEEPROM(CommonBuf);
 			}
+#endif
 			break;
 		case 4: 
 			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)pWndBgNameInfo[WND_INIT][Setup2.language]);
@@ -5826,7 +5844,9 @@ void UI_SystemInit_Timer(uint16_t nIDEvent)
 						Motor_OverCurTbl[i][j] = SensDefault[i][j];
 					}
 				}
+#ifndef USE_JIG_TEST_MODE
 				UI_SaveSystemInfoToFlash(CommonBuf);
+#endif
 			}
 			break;
 		case 6: 
@@ -6099,7 +6119,8 @@ void UI_Loading_Timer(uint16_t nIDEvent)
 	*/
 	if (MotorDrv_GetFlagHomeIn()) 
 	{
-		//MotorDrv_StopHome();
+		MotorDrv_SetTargetPosition(Setup3.IPos);
+		MotorDrv_StopHome();
 		App_KillTimer(TIMER_ID_1);
 		if(SpdTmWnd_bk_speed < 3){
 			SpdTmWnd.speed = SpdTmWnd_bk_speed;
@@ -6125,7 +6146,7 @@ void  UI_Loading_Process(void)
 	//if (!UI_CheckMotorStatus()) return;
 	
 	//home-in switch break
-	#if 0//ndef USE_JIG_TEST_MODE
+	#ifndef USE_JIG_TEST_MODE
 	if (UI_Time.tmp_sec > HOME_IN_TOTAL_TIME) {
 		MotorDrv_StopHome();
 		//App_KillTimer(TIMER_ID_1);
@@ -6147,6 +6168,7 @@ void  UI_Loading_Process(void)
 		if(MotorDrv_GetFlagLimitSW() == 0){
 			if (MotorDrv_GetLimitSwitchStatus() == 1) {
 				MotorDrv_SetMotorZeroPosition();
+				MotorDrv_SetDirection(MDD_CCW);
 				//MotorDrv_StopHome();
 				//App_SetUIProcess(UI_ProcessNull);
 				//CommonBuf[0] = (uint8_t)Setup3.IPos; //pjg++190813 : backup home pos
@@ -6191,15 +6213,15 @@ void UI_Loading_OnBnClickedBtnStop(void)
 		App_SetTimer(TIMER_ID_1, 50);//150000);
 		App_SetUIProcess(UI_Loading_Process);
 		UI_Time.tmp_sec = 0;//70;//limit s/w search time
-		if (MotorDrv_GetLimitSwitchStatus() == 1) {
-			MotorDrv_SetMotorState(MOTOR_CW);
-			MotorDrv_SetDirection(MDD_CW);
-		}
-		else {
-			MotorDrv_SetMotorState(MOTOR_CCW);
-			MotorDrv_SetDirection(MDD_CCW);
-		}
-		MotorDrv_SetFlagLimitSW(0);
+		//if (MotorDrv_GetLimitSwitchStatus() == 1) {
+		//	MotorDrv_SetMotorState(MOTOR_CW);
+		//	MotorDrv_SetDirection(MDD_CW);
+		//}
+		//else {
+		//	MotorDrv_SetMotorState(MOTOR_CCW);
+		//	MotorDrv_SetDirection(MDD_CCW);
+		//}
+		//MotorDrv_SetFlagLimitSW(0);
 		MotorDrv_GoHome();
 		RunWnd.play = UI_RUN_MODE_LOAD;
 		Option.temp16 = 0;
@@ -6322,6 +6344,10 @@ void UI_User_OnBnClickedBtnGuest(void)
 		//UI_InitSetupVariable();
 		//UI_InitSystemVariable();
 		UI_InitVariable();
+#ifdef USE_QC_LIFE_TEST_SAVE_CUR
+		SpdTmWnd.time = 9999;//8*60;
+		AngleWnd.flAngle = 140;
+#endif
 		//PInfoWnd2.pi.totalTime = totalTimeBk;
 		//PInfoWnd2.pi.totalRepeat = totalRepeatBk;
 	//}
@@ -6499,6 +6525,30 @@ void UI_Home_Init(void)
 	appJumpAddress = 0x;
 	NVIC_SystemReset(); 
 	#endif
+
+#ifdef USE_QC_LIFE_TEST_SAVE_CUR
+	uart_putstring("fc 255,0,0\r"); 	  
+	uart_putstring("f USB checking... ,5,50\r");
+	if (!USBDisk_Link()) {
+		return;
+	}
+	if (!USBDisk_Mount()) {
+		USBDisk_UnLink();
+		return;
+	}
+
+	for (loading = 0; loading < 30000; loading++) {
+		if (USBDisk_CheckDetect() == 1) break;
+		HAL_Delay(1);
+	}
+	if (USBDisk_GetReadyFlag() == 1) {
+		uart_putstring("fc 255,0,0\r"); 	  
+		uart_putstring("f USB detected ,5,240\r");
+	}
+	USBDisk_UnMount();
+	USBDisk_UnLink();
+
+#endif
 }
 
 LRESULT UI_Home_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -7291,7 +7341,11 @@ void UI_SpeedTime_OnBnClickedBtnTmUp(void)
 {
 	  
 	//if(SpdTmWnd.time >= 60)  SpdTmWnd.time = 60;
+#ifdef USE_QC_LIFE_TEST_SAVE_CUR
+	if(SpdTmWnd.time < 9999)  SpdTmWnd.time++;
+#else
 	if(SpdTmWnd.time < 60)  SpdTmWnd.time++;
+#endif
 	{
 		if(Setup3.ProChk == BST_CHECKED){
 			if(SpdTmWnd.time > Setup3.PTm){
@@ -7304,13 +7358,21 @@ void UI_SpeedTime_OnBnClickedBtnTmUp(void)
 				APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i minus.bmp,405,133\r");
 				App_SetButtonOption(RID_STS_BTN_TMM, BN_PUSHED);
 			}
+#ifdef USE_QC_LIFE_TEST_SAVE_CUR
+			if(SpdTmWnd.time == 9999){
+#else
 			if(SpdTmWnd.time == 60){
+#endif
 				APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,345,134\r");
 				App_SetButtonOption(RID_STS_BTN_TMP, BN_DISABLE);
 			}
 		}
 	}
+#ifdef USE_QC_LIFE_TEST_SAVE_CUR
+	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 355, 94, SpdTmWnd.time,4);
+#else
 	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 355, 94, SpdTmWnd.time,2);
+#endif
 
 	UI_SpeedTime_SetSpTm_Pic(SpdTmWnd.speed,SpdTmWnd.time);
 
@@ -7332,26 +7394,42 @@ void UI_SpeedTime_OnBnClickedBtnTmDown(void)
 			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,405,133\r");
 			App_SetButtonOption(RID_STS_BTN_TMM, BN_DISABLE);
 		}
+#ifdef USE_QC_LIFE_TEST_SAVE_CUR
+		if(SpdTmWnd.time < 999)
+#else
 		if(SpdTmWnd.time < 60)
+#endif
 		{
 			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i plus.bmp,345,133\r");
 			App_SetButtonOption(RID_STS_BTN_TMP, BN_PUSHED);
 		}
 	}
+#ifdef USE_QC_LIFE_TEST_SAVE_CUR
+	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 355, 94, SpdTmWnd.time,3);
+#else
 	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 355, 94, SpdTmWnd.time,2);
-
+#endif
 	UI_SpeedTime_SetSpTm_Pic(SpdTmWnd.speed,SpdTmWnd.time);
 
 }
 
 void UI_SpeedTime_OnBnLongClickedBtnTmUp(void)
 {	
+#ifdef USE_QC_LIFE_TEST_SAVE_CUR
+	if(SpdTmWnd.time < 999)
+	{	
+		if (SpdTmWnd.time < (999-5))  SpdTmWnd.time += 5;
+		else// if(SpdTmWnd.time >= 56) 
+			SpdTmWnd.time++;
+	}
+#else
 	if(SpdTmWnd.time < 60)
 	{	
 		if (SpdTmWnd.time < 56)  SpdTmWnd.time += 5;
 		else// if(SpdTmWnd.time >= 56) 
 			SpdTmWnd.time++;
 	}
+#endif
 	if(Setup3.ProChk == BST_CHECKED){
 		if(SpdTmWnd.time > Setup3.PTm){
 			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i minus.bmp,405,133\r");
@@ -7363,12 +7441,20 @@ void UI_SpeedTime_OnBnLongClickedBtnTmUp(void)
 			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i minus.bmp,405,133\r");
 			App_SetButtonOption(RID_STS_BTN_TMM, BN_PUSHED);
 		}
+#ifdef USE_QC_LIFE_TEST_SAVE_CUR
+		if(SpdTmWnd.time == 999){
+#else
 		if(SpdTmWnd.time == 60){
+#endif
 			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,345,134\r");
 			App_SetButtonOption(RID_STS_BTN_TMP, BN_DISABLE);
 		}
 	}
+#ifdef USE_QC_LIFE_TEST_SAVE_CUR
+	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 355, 94, SpdTmWnd.time,3);
+#else
 	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 355, 94, SpdTmWnd.time,2);
+#endif
 
 	UI_SpeedTime_SetSpTm_Pic(SpdTmWnd.speed,SpdTmWnd.time);
 }
@@ -7400,13 +7486,21 @@ void UI_SpeedTime_OnBnLongClickedBtnTmDown(void)
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,405,133\r");
 		App_SetButtonOption(RID_STS_BTN_TMM, BN_DISABLE);
 	}
+#ifdef USE_QC_LIFE_TEST_SAVE_CUR
+	if(SpdTmWnd.time < 999)
+#else
 	if(SpdTmWnd.time < 60)
+#endif
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i plus.bmp,345,133\r");
 		App_SetButtonOption(RID_STS_BTN_TMP, BN_PUSHED);
 	}
 
+#ifdef USE_QC_LIFE_TEST_SAVE_CUR
+	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 355, 94, SpdTmWnd.time,3);
+#else
 	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 355, 94, SpdTmWnd.time,2);
+#endif
 
 	UI_SpeedTime_SetSpTm_Pic(SpdTmWnd.speed,SpdTmWnd.time);
 }
@@ -7473,7 +7567,11 @@ void UI_SpeedTime_Init(void)
 	//if (loginInfo.type == LIT_USER) UI_LoadPIFromEEPROM(PInfoWnd2.id, (uint8_t *)CommonBuf);
 	
 	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE, pos,94, SpdTmWnd.speed,1);
+	#ifdef USE_QC_LIFE_TEST_SAVE_CUR
+	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 355, 94, SpdTmWnd.time,3);
+	#else
 	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 355, 94, SpdTmWnd.time,2);
+	#endif
 
 	UI_PINumber_Display();
 	
@@ -7502,7 +7600,11 @@ void UI_SpeedTime_Init(void)
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,405,133\r");
 		App_SetButtonOption(RID_STS_BTN_TMM, BN_DISABLE);
 	}
+#ifdef USE_QC_LIFE_TEST_SAVE_CUR
+	else if(SpdTmWnd.time == 999)
+#else
 	else if(SpdTmWnd.time == 60)
+#endif
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,345,133\r");
 		App_SetButtonOption(RID_STS_BTN_TMP, BN_DISABLE);
@@ -7627,15 +7729,19 @@ void UI_PopupRunModeVibReq_OnBnClickedBtnYes(void)
 	if (Setup3.VibChk == BST_CHECKED) {
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nv.bmp,410,2\r");
 		Setup3.VibChk = BST_UNCHECKED;
+		Setup3Old.VibChk = BST_UNCHECKED; //pjg++200205
 		App_SetButtonOption(RID_RN_BTN_PROCHK, BN_PUSHED);
 	}
 	else {
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i v.bmp,410,2\r");
 		Setup3.VibChk = BST_CHECKED;
+		Setup3Old.VibChk = BST_CHECKED; //pjg++200205
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i np.bmp,342,2\r");
 		App_SetButtonOption(RID_RN_BTN_PROCHK, BN_DISABLE);
 	}
 	UI_SetFunRunMode(UI_FRM_BY_AUTO);
+	RunWnd.repeat = 0; //pjg++200205
+	RunWnd.time = SpdTmWnd.time; //pjg++200205
 	UI_Run_Create();
 }
 
@@ -7723,12 +7829,16 @@ void UI_PopupRunModeLPauseReq_OnBnClickedBtnYes(void)
 	if (Setup3.LPChk == BST_CHECKED) {
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nl.bmp,376,2\r");
 		Setup3.LPChk = BST_UNCHECKED;
+		Setup3Old.LPChk = BST_UNCHECKED; //pjg++200205
 	}
 	else {
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i l.bmp,376,2\r");
 		Setup3.LPChk = BST_CHECKED;
+		Setup3Old.LPChk = BST_CHECKED; //pjg++200205
 	}
 	UI_SetFunRunMode(UI_FRM_BY_AUTO);
+	RunWnd.repeat = 0; //pjg++200205
+	RunWnd.time = SpdTmWnd.time; //pjg++200205
 	UI_Run_Create();
 }
 
@@ -7815,15 +7925,19 @@ void UI_PopupRunModeProgressReq_OnBnClickedBtnYes(void)
 	if (Setup3.ProChk == BST_CHECKED) {
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i np.bmp,342,2\r");
 		Setup3.ProChk = BST_UNCHECKED;
+		Setup3Old.ProChk = BST_UNCHECKED; //pjg++200205
 		App_SetButtonOption(RID_RN_BTN_VIBCHK, BN_PUSHED);
 	}
 	else {
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i p.bmp,342,2\r");
 		Setup3.ProChk = BST_CHECKED;
+		Setup3Old.ProChk = BST_CHECKED; //pjg++200205
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nv.bmp,410,2\r");
 		App_SetButtonOption(RID_RN_BTN_VIBCHK, BN_DISABLE);
 	}
 	UI_SetFunRunMode(UI_FRM_BY_AUTO);
+	RunWnd.repeat = 0; //pjg++200205
+	RunWnd.time = SpdTmWnd.time; //pjg++200205
 	UI_Run_Create();
 }
 
@@ -7936,16 +8050,153 @@ void UI_Run_DisplayValue(void)
 	//if (PInfoWnd.totalTime > 999) PInfoWnd.totalTime = 0;
 }
 
+#ifdef USE_QC_LIFE_TEST_SAVE_CUR
+void UI_Run_SaveCurrent(void)
+{
+	FILINFO fno;
+	//uint16_t *p;
+	int i, cnt;
+	uint8_t buf[20];
+
+#if 1
+	if (!USBDisk_Link()) {
+		uart_putstring("fc 255,0,0\r"); 	  
+		uart_putstring("f USB link error... ,5,50\r");
+		return;
+	}
+	if (!USBDisk_Mount()) {
+		USBDisk_UnLink();
+		uart_putstring("fc 255,0,0\r"); 	  
+		uart_putstring("f USB mount error... ,5,50\r");
+		return;
+	}
+	if (!USBDisk_OpenAlwaysWrite((char *)"0:/cur.csv")) {
+		USBDisk_UnMount();
+		USBDisk_UnLink();
+		uart_putstring("fc 255,0,0\r"); 	  
+		uart_putstring("f USB open error... ,5,50\r");
+		return;
+	}	
+	if (EEPROMDisk_stat((char *)"0:/cur.csv", &fno) != 1) {
+		USBDisk_UnMount();
+		USBDisk_UnLink();
+		uart_putstring("fc 255,0,0\r"); 	  
+		uart_putstring("f USB stat error... ,5,50\r");
+		return;
+	}
+	if (!USBDisk_lseek(fno.fsize)) {
+		USBDisk_Close();
+		USBDisk_UnMount();
+		USBDisk_UnLink();
+		uart_putstring("fc 255,0,0\r"); 	  
+		uart_putstring("f USB lseek error... ,5,50\r");
+		return;
+	}
+
+	uart_putstring("fc 255,255,255\r"); 	  
+	buf[0] = 'f';
+	buf[1] = ' ';
+	buf[2] = QCLife.cnt/100+'0';
+	cnt = QCLife.cnt%100;
+	buf[3] = cnt/10+'0';
+	buf[4] = cnt%10+'0';
+	buf[5] = ',';
+	buf[6] = '3';
+	buf[7] = '0';
+	buf[8] = '0';
+	buf[9] = ',';
+	buf[10] = '1';
+	buf[11] = '9';
+	buf[12] = '0';
+	buf[13] = '\r';
+	buf[14] = 0;
+	uart_putstring((char *)buf);
+	QCLife.cnt++;
+	cnt = 0;
+	cnt = ConvertLong2String(QCLife.cnt, &CommonBuf[cnt], 5);
+	CommonBuf[cnt] = ',';
+	cnt++;
+	for (i = 0; i < 29; i++) {
+		cnt += ConvertLong2String(QCLife.curBuf[i], &CommonBuf[cnt], 5);
+		CommonBuf[cnt] = ',';
+		cnt++;
+	}
+	CommonBuf[cnt++] = 0x0d;
+	CommonBuf[cnt++] = 0x0a;
+	if (!USBDisk_Write((uint8_t *)CommonBuf, cnt)) {
+		USBDisk_Close();
+		USBDisk_UnMount();
+		USBDisk_UnLink();
+		uart_putstring("fc 255,0,0\r"); 	  
+		uart_putstring("f USB write error... ,5,50\r");
+		return;
+	}
+	USBDisk_Close();
+	USBDisk_UnMount();
+	USBDisk_UnLink();
+#else
+	uart_putstring("fc 255,255,255\r"); 	  
+	buf[0] = 'f';
+	buf[1] = ' ';
+	buf[2] = QCLife.cnt/100+'0';
+	cnt = QCLife.cnt%100;
+	buf[3] = cnt/10+'0';
+	buf[4] = cnt%10+'0';
+	buf[5] = ',';
+	buf[6] = '3';
+	buf[7] = '0';
+	buf[8] = '0';
+	buf[9] = ',';
+	buf[10] = '1';
+	buf[11] = '9';
+	buf[12] = '0';
+	buf[13] = '\r';
+	buf[14] = 0;
+	uart_putstring((char *)buf);
+	QCLife.cnt++;
+#endif	
+	//uart_putstring("f          ,300,190\r");
+	uart_putstring("fc 0,0,0\r"); 	  
+	uart_putstring("f Save Cnt:,150,190\r");
+	buf[0] = 'f';
+	buf[1] = ' ';
+	buf[2] = QCLife.cnt/100+'0';
+	cnt = QCLife.cnt%100;
+	buf[3] = cnt/10+'0';
+	buf[4] = cnt%10+'0';
+	buf[5] = ',';
+	buf[6] = '3';
+	buf[7] = '0';
+	buf[8] = '0';
+	buf[9] = ',';
+	buf[10] = '1';
+	buf[11] = '9';
+	buf[12] = '0';
+	buf[13] = '\r';
+	buf[14] = 0;
+	uart_putstring((char *)buf);
+}
+#endif
+
 void UI_Run_Timer(uint16_t nIDEvent)
 {
 	switch (nIDEvent) {
 		case TIMER_ID_2:
-			if (RunWnd.time > 0){
-				if(RunWnd.play != UI_RUN_MODE_HOME){
+			if (RunWnd.time > 0) {
+				if(RunWnd.play != UI_RUN_MODE_HOME) {
 					if(Timer_sec >= 6){ //1min //pjg<>200103
 						RunWnd.time--;
 						PInfoWnd2.pi.totalTime++;
 						Timer_sec = 0;
+						#ifdef USE_QC_LIFE_TEST_SAVE_CUR
+						loading++;
+						if (loading >= 60) {
+							loading = 0;
+							QCLife.fStart = 0;
+							QCLife.fSave = 0;
+							for (int i = 0; i < 29; i++) QCLife.curBuf[i] = 0;
+						}
+						#endif
 					}
 					//PInfoWnd2.pi.totalRepeat += RunWnd.repeat;//Total_Counter;
 				}
@@ -8039,7 +8290,7 @@ void UI_Run_Process_HomeIn(void)
 				UI_DisplayDecimal(UI_DISP_NUM_FNT9, UI_DISP_NUM_3PLACE, 30,160, 0);
 				API_ChangeHMenu(hParent, RID_RN_BTN_STOP, RID_RN_BTN_PLAY);
 				APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)pBtnInfo[RID_RN_BTN_PLAY*2]);
-				App_SetButtonOption(RID_RN_BTN_HOME, BN_PUSHED);
+				App_SetButtonOption(RID_RN_BTN_HOME+Setup2.language, BN_PUSHED);
 				//App_SetButtonOption(RID_RN_BTN_RIGHT, BN_PUSHED);
 				App_SetButtonOption(RID_RN_BTN_LEFT, BN_PUSHED);
 				App_SetButtonOption(RID_RN_BTN_SETUP, BN_PUSHED);
@@ -8066,7 +8317,7 @@ void UI_Run_Process_HomeIn(void)
 		UI_DisplayDecimal(UI_DISP_NUM_FNT9, UI_DISP_NUM_3PLACE, 30,160, 0);
 		API_ChangeHMenu(hParent, RID_RN_BTN_STOP, RID_RN_BTN_PLAY);
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)pBtnInfo[RID_RN_BTN_PLAY*2]);
-		App_SetButtonOption(RID_RN_BTN_HOME, BN_PUSHED);
+		App_SetButtonOption(RID_RN_BTN_HOME+Setup2.language, BN_PUSHED);
 		App_SetButtonOption(RID_RN_BTN_RIGHT, BN_PUSHED);
 		App_SetButtonOption(RID_RN_BTN_LEFT, BN_PUSHED);
 		App_SetButtonOption(RID_RN_BTN_SETUP, BN_PUSHED);
@@ -8187,14 +8438,14 @@ void UI_Run_OnBnClickedBtnPlayHome(void)
 }
 
 //uint8_t shortkey_one=0;
-		void UI_Run_OnBnClickedBtnPlayStart(void)
+void UI_Run_OnBnClickedBtnPlayStart(void)
 {
 	//if(Exercise.addr >= EXERCISE_INFO_NUM)	UI_PopupDataFull_Create();
 	//else
 	{
 		MotorDrv_Run();
 		UI_SetFunRunMode(UI_FRM_BY_AUTO);
-		RunWnd.time = SpdTmWnd.time;
+		//RunWnd.time = SpdTmWnd.time; //pjg--200205
 		RunWnd.play = UI_RUN_MODE_PLAY;
 		API_ChangeHMenu(hParent, RID_RN_BTN_PLAY, RID_RN_BTN_PLAYING);
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)pBtnInfo[RID_RN_BTN_PLAYING*2]);
@@ -8208,7 +8459,7 @@ void UI_Run_OnBnClickedBtnPlayHome(void)
 		Timer_sec = 0; //pjg++170608 buf fix: complete right now
 		App_SetButtonOption(RID_RN_BTN_LEFT, BN_DISABLE);
 		//App_SetButtonOption(RID_RN_BTN_RIGHT, BN_DISABLE);
-		App_SetButtonOption(RID_RN_BTN_HOME, BN_DISABLE);
+		App_SetButtonOption(RID_RN_BTN_HOME+Setup2.language, BN_DISABLE);
 		App_SetButtonOption(RID_RN_BTN_SETUP, BN_DISABLE);
 		App_SetButtonOption(RID_RN_BTN_PLAY, BN_DISABLE);
 		App_SetButtonOption(RID_RN_BTN_STOP, BN_DISABLE);
@@ -8243,7 +8494,7 @@ void UI_Run_OnBnLongClickedBtnPlayHome(void)
 	
 	App_SetButtonOption(RID_RN_BTN_LEFT, BN_DISABLE);
 	//App_SetButtonOption(RID_RN_BTN_RIGHT, BN_DISABLE);
-	App_SetButtonOption(RID_RN_BTN_HOME, BN_DISABLE);
+	App_SetButtonOption(RID_RN_BTN_HOME+Setup2.language, BN_DISABLE);
 	App_SetButtonOption(RID_RN_BTN_SETUP, BN_DISABLE);
 	//App_SetButtonOption(RID_RN_BTN_PLAY, BN_DISABLE);
 	//App_SetButtonOption(RID_RN_BTN_STOP, BN_DISABLE);
@@ -8325,6 +8576,10 @@ void UI_Run_OnBnClickedBtnStop(void)
 {	
 	if (RunWnd.play == UI_RUN_MODE_HOME) {
 		MotorDrv_SetTargetPosition(MotorDrv_GetPosition());
+		//API_ChangeHMenu(hParent, RID_RN_BTN_PLAYING, RID_RN_BTN_STOP);
+		API_ChangeDnEventedHMenu(hParent, RID_RN_BTN_PLAY);
+		//API_ChangeHMenu(hParent, RID_RN_BTN_PAUSE, RID_RN_BTN_STOP);
+		API_ChangeHMenu(hParent, RID_RN_BTN_STOP, RID_RN_BTN_PLAY);
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)pBtnInfo[RID_RN_BTN_PAUSE*2]);
 		APP_SendMessage(hParent, WM_SOUND, 0, SNDID_OPERATION_STOP);
 		App_KillTimer(TIMER_ID_2);
@@ -8333,6 +8588,9 @@ void UI_Run_OnBnClickedBtnStop(void)
 		RunWnd.play = UI_RUN_MODE_HOME_PAUSE;
 	}
 	else {
+		API_ChangeHMenu(hParent, RID_RN_BTN_PLAYING, RID_RN_BTN_STOP);
+		API_ChangeDnEventedHMenu(hParent, RID_RN_BTN_STOP);
+		API_ChangeHMenu(hParent, RID_RN_BTN_PAUSE, RID_RN_BTN_STOP);
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)pBtnInfo[RID_RN_BTN_STOP*2]);
 		APP_SendMessage(hParent, WM_SOUND, 0, SNDID_GO_HOME);
 		App_SetTimer(TIMER_ID_2, 30);
@@ -8551,20 +8809,20 @@ void UI_Run_LimitedPauseMode(void)
 
 void UI_Run_ProgressMode(void)
 {
-	//if (!UI_CheckMotorStatus()) return;
-	if (MotorDrv_GetFlagLimitSW()) {
-		MotorDrv_Stop();
-		UI_SetFunRunMode(UI_FRM_NONE);
-		API_SetErrorCode(EC_OVER_RANGE, EDT_DISP_HALT);
-		return;
-	}
-	UI_CheckCurrentSensitivity();
-
-	if ( Setup3.PDeg == MotorDrv_GetProgressAngle()) {
+	if ( Setup3.PDeg <= MotorDrv_GetProgressAngle()) { //progress angle end
 		if (Setup3.LPChk) UI_Run_LimitedPauseMode();
 		else UI_Run_NormalMode();
 	}
 	else {
+		//if (!UI_CheckMotorStatus()) return;
+		if (MotorDrv_GetFlagLimitSW()) {
+			MotorDrv_Stop();
+			UI_SetFunRunMode(UI_FRM_NONE);
+			API_SetErrorCode(EC_OVER_RANGE, EDT_DISP_HALT);
+			return;
+		}
+		UI_CheckCurrentSensitivity();
+
 		if (MotorDrv_GetDirection() == MDD_CCW) {
 			if (MotorDrv_GetPosition() > 
 				(AngleWnd.flAngle - Setup3.PDeg + MotorDrv_GetProgressAngle())) {
@@ -8908,12 +9166,162 @@ void UI_SetFunRunMode(uint8_t mode)
 
 }
 
+#ifdef USE_QC_LIFE_TEST_SAVE_CUR
+void UI_Run_QCLifeTest_SaveCurAtDeg(void)
+{
+	if (MotorDrv_GetPosition() == 0) {
+		QCLife.fStart = 1;
+	}
+
+	Product_Calib.curCurrent += MotorDrv_GetCurrent();
+	Product_Calib.cnt++;
+	if (Product_Calib.cnt >= PROD_CAL_BUF_SIZE) {
+		Product_Calib.curCurrent /= Product_Calib.cnt;
+		Product_Calib.oldCurrent = Product_Calib.curCurrent;
+		Product_Calib.curCurrent = 0;
+		Product_Calib.cnt = 0;
+	}
+	//else return;
+
+	if (QCLife.fStart == 0) return;
+	if (QCLife.fSave == 1) return;
+
+	if (MotorDrv_GetPosition() == 1) {
+		if (QCLife.curBuf[0] == 0) {
+			QCLife.curBuf[0] = Product_Calib.oldCurrent;
+		}
+		else if (QCLife.curBuf[28] == 0 && MotorDrv_GetDirection() == MDD_CW) {
+			QCLife.curBuf[28] = Product_Calib.oldCurrent;
+			if (QCLife.fSave == 0) {
+				QCLife.fSave = 1;
+				UI_Run_SaveCurrent();
+			}
+		}
+	}
+	else if (MotorDrv_GetPosition() == 10) {
+		if (QCLife.curBuf[1] == 0) {
+			QCLife.curBuf[1] = Product_Calib.oldCurrent;
+		}
+		else if (QCLife.curBuf[28-1] == 0 && MotorDrv_GetDirection() == MDD_CW) {
+			QCLife.curBuf[28-1] = Product_Calib.oldCurrent;
+		}
+	}
+	else if (MotorDrv_GetPosition() == 20) {
+		if (QCLife.curBuf[2] == 0) {
+			QCLife.curBuf[2] = Product_Calib.oldCurrent;
+		}
+		else if (QCLife.curBuf[28-2] == 0 && MotorDrv_GetDirection() == MDD_CW) {
+			QCLife.curBuf[28-2] = Product_Calib.oldCurrent;
+		}
+	}
+	else if (MotorDrv_GetPosition() == 30) {
+		if (QCLife.curBuf[3] == 0) {
+			QCLife.curBuf[3] = Product_Calib.oldCurrent;
+		}
+		else if (QCLife.curBuf[28-3] == 0 && MotorDrv_GetDirection() == MDD_CW) {
+			QCLife.curBuf[28-3] = Product_Calib.oldCurrent;
+		}
+	}
+	else if (MotorDrv_GetPosition() == 40) {
+		if (QCLife.curBuf[4] == 0) {
+			QCLife.curBuf[4] = Product_Calib.oldCurrent;
+		}
+		else if (QCLife.curBuf[28-4] == 0 && MotorDrv_GetDirection() == MDD_CW) {
+			QCLife.curBuf[28-4] = Product_Calib.oldCurrent;
+		}
+	}
+	else if (MotorDrv_GetPosition() == 50) {
+		if (QCLife.curBuf[5] == 0) {
+			QCLife.curBuf[5] = Product_Calib.oldCurrent;
+		}
+		else if (QCLife.curBuf[28-5] == 0 && MotorDrv_GetDirection() == MDD_CW) {
+			QCLife.curBuf[28-5] = Product_Calib.oldCurrent;
+		}
+	}
+	else if (MotorDrv_GetPosition() == 60) {
+		if (QCLife.curBuf[6] == 0) {
+			QCLife.curBuf[6] = Product_Calib.oldCurrent;
+		}
+		else if (QCLife.curBuf[28-6] == 0 && MotorDrv_GetDirection() == MDD_CW) {
+			QCLife.curBuf[28-6] = Product_Calib.oldCurrent;
+		}
+	}
+	else if (MotorDrv_GetPosition() == 70) {
+		if (QCLife.curBuf[7] == 0) {
+			QCLife.curBuf[7] = Product_Calib.oldCurrent;
+		}
+		else if (QCLife.curBuf[28-7] == 0 && MotorDrv_GetDirection() == MDD_CW) {
+			QCLife.curBuf[28-7] = Product_Calib.oldCurrent;
+		}
+	}
+	else if (MotorDrv_GetPosition() == 80) {
+		if (QCLife.curBuf[8] == 0) {
+			QCLife.curBuf[8] = Product_Calib.oldCurrent;
+		}
+		else if (QCLife.curBuf[28-8] == 0 && MotorDrv_GetDirection() == MDD_CW) {
+			QCLife.curBuf[28-8] = Product_Calib.oldCurrent;
+		}
+	}
+	else if (MotorDrv_GetPosition() == 90) {
+		if (QCLife.curBuf[9] == 0) {
+			QCLife.curBuf[9] = Product_Calib.oldCurrent;
+		}
+		else if (QCLife.curBuf[28-9] == 0 && MotorDrv_GetDirection() == MDD_CW) {
+			QCLife.curBuf[28-9] = Product_Calib.oldCurrent;
+		}
+	}
+	else if (MotorDrv_GetPosition() == 100) {
+		if (QCLife.curBuf[10] == 0) {
+			QCLife.curBuf[10] = Product_Calib.oldCurrent;
+		}
+		else if (QCLife.curBuf[28-10] == 0 && MotorDrv_GetDirection() == MDD_CW) {
+			QCLife.curBuf[28-10] = Product_Calib.oldCurrent;
+		}
+	}
+	else if (MotorDrv_GetPosition() == 110) {
+		if (QCLife.curBuf[11] == 0) {
+			QCLife.curBuf[11] = Product_Calib.oldCurrent;
+		}
+		else if (QCLife.curBuf[28-11] == 0 && MotorDrv_GetDirection() == MDD_CW) {
+			QCLife.curBuf[28-11] = Product_Calib.oldCurrent;
+		}
+	}
+	else if (MotorDrv_GetPosition() == 120) {
+		if (QCLife.curBuf[12] == 0) {
+			QCLife.curBuf[12] = Product_Calib.oldCurrent;
+		}
+		else if (QCLife.curBuf[28-12] == 0 && MotorDrv_GetDirection() == MDD_CW) {
+			QCLife.curBuf[28-12] = Product_Calib.oldCurrent;
+		}
+	}
+	else if (MotorDrv_GetPosition() == 130) {
+		if (QCLife.curBuf[13] == 0) {
+			QCLife.curBuf[13] = Product_Calib.oldCurrent;
+		}
+		else if (QCLife.curBuf[28-13] == 0 && MotorDrv_GetDirection() == MDD_CW) {
+			QCLife.curBuf[28-13] = Product_Calib.oldCurrent;
+		}
+	}
+	else if (MotorDrv_GetPosition() == 139) {
+		if (QCLife.curBuf[14] == 0) {
+			QCLife.curBuf[14] = Product_Calib.oldCurrent;
+		}
+		//else if (QCLife.curBuf[28-14] == 0 && MotorDrv_GetDirection() == MDD_CW) {
+		//	QCLife.curBuf[28-14] = Product_Calib.oldCurrent;
+		//}
+	}
+}
+#endif
+
 //구동중에 실행되는 함수
 void UI_Run_Process(void)
 {
 	//uint32_t temp;
 	//char buf[30];
-	
+#ifdef USE_QC_LIFE_TEST_SAVE_CUR
+	//uint16_t *p;
+#endif
+
    //모터 구동이 완료 되었을 경우
 	if (RunWnd.time == 0) {
 		if (RunWnd.play == UI_RUN_MODE_PLAY) {
@@ -8937,7 +9345,11 @@ void UI_Run_Process(void)
 		return;
 	}
 	fnUi_FunRunMode();
-	
+
+#ifdef USE_QC_LIFE_TEST_SAVE_CUR
+	UI_Run_QCLifeTest_SaveCurAtDeg();
+#endif	
+
 #if 0 // current monitor
 	if (Option.curDisp) 
 	{
@@ -8994,16 +9406,16 @@ void UI_Run_OnKeyLong(uint32_t nChar)
 
 void	UI_Run_Init(void)
 {       
+#ifdef USE_QC_LIFE_TEST_SAVE_CUR
+	int i;
+#endif
+
 	APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)DoubleBufStartCmd);
 	// button
 	API_CreateWindow("", pBtnInfo[RID_RN_BTN_LEFT*2], BS_PUSHBUTTON, 
 			GetNumFromString(pBtnInfo[RID_RN_BTN_LEFT*2], ',', 1),
 			GetNumFromString(pBtnInfo[RID_RN_BTN_LEFT*2], ',', 2),
 			116, 45, hParent, RID_RN_BTN_LEFT, 0);
-	/*API_CreateWindow("", pBtnInfo[RID_RN_BTN_HOME*2], BS_PUSHBUTTON, 
-			GetNumFromString(pBtnInfo[RID_RN_BTN_HOME*2], ',', 1),
-			GetNumFromString(pBtnInfo[RID_RN_BTN_HOME*2], ',', 2),
-			116, 45, hParent, RID_RN_BTN_HOME, 0);*/
 	API_CreateWindow("", pBtnInfo[(RID_RN_BTN_HOME+Setup2.language)*2], BS_PUSHBUTTON, 
 			GetNumFromString(pBtnInfo[(RID_RN_BTN_HOME+Setup2.language)*2], ',', 1),
 			GetNumFromString(pBtnInfo[(RID_RN_BTN_HOME+Setup2.language)*2], ',', 2),
@@ -9075,6 +9487,15 @@ void	UI_Run_Init(void)
 
 	APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)DoubleBufEndCmd);
 	MotorDrv_SetSensCurrent(STANDBY_SENS_CURRENT);
+#ifdef USE_QC_LIFE_TEST_SAVE_CUR
+	for (i = 0; i < 29; i++) QCLife.curBuf[i] = 0;
+	QCLife.fStart = 0;
+	QCLife.fSave = 0;
+	QCLife.cnt = 0;
+	loading = 0;
+	Product_Calib.oldCurrent = 0;
+	
+#endif
 }
 
 LRESULT UI_Run_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -9128,8 +9549,9 @@ LRESULT UI_Run_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		case RID_RN_BTN_PLAY:
 			switch(lParam) {
 			case BN_CLICKED: // push 
-				if (RunWnd.play == UI_RUN_MODE_HOME || RunWnd.play == UI_RUN_MODE_HOME_PAUSE) 
+				if (RunWnd.play == UI_RUN_MODE_HOME || RunWnd.play == UI_RUN_MODE_HOME_PAUSE) {
 					UI_Run_OnBnClickedBtnPlayHome();
+				}
 				else UI_Run_OnBnClickedBtnPlayStart();
 				break;
 			case BN_LONGPUSHED: //long push 
@@ -9627,6 +10049,18 @@ void UI_Setup_OnBnClickedBtnExit(void)
 		}
 	}
 	if (flag) {
+		if ((Setup3.LPChk != Setup3Old.LPChk) || //pjg++200205
+			(Setup3.LP != Setup3Old.LP) ||
+			(Setup3.ProChk != Setup3Old.ProChk) ||
+			(Setup3.PDeg != Setup3Old.PDeg) ||
+			(Setup3.PTm != Setup3Old.PTm) ||
+			(Setup3.VDeg != Setup3Old.VDeg) ||
+			(Setup3.VCnt != Setup3Old.VCnt) ||
+			(Setup3.VibChk != Setup3Old.VibChk))
+		{
+			RunWnd.repeat = 0;
+			RunWnd.time = SpdTmWnd.time;
+		}
 		ptr = (uint8_t *)&Setup2;
 		ptr2 = (uint8_t *)&Setup2Old;
 		for (i = 0; i < sizeof(SETUP2_INFO); i++) {
@@ -15730,7 +16164,7 @@ void UI_Progress_OnBnClickedBtnChk(void)
 		App_SetButtonOption(RID_PRO_BTN_DEGM, BN_DISABLE);	
 		App_SetButtonOption(RID_PRO_BTN_TMP, BN_DISABLE);
 		App_SetButtonOption(RID_PRO_BTN_TMM, BN_DISABLE);	
-		Setup3.ProChk= BST_UNCHECKED;
+		Setup3.ProChk = BST_UNCHECKED;
 	}
 	else { 
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i dchk.jpg,420,4\r");
@@ -16530,7 +16964,7 @@ void UI_Vibration_OnBnClickedBtnChk(void)
 		App_SetButtonOption(RID_VIB_BTN_DEGM, BN_DISABLE);	
 		App_SetButtonOption(RID_VIB_BTN_CNTP, BN_DISABLE);
 		App_SetButtonOption(RID_VIB_BTN_CNTM, BN_DISABLE);
-		Setup3.VibChk= BST_UNCHECKED;
+		Setup3.VibChk = BST_UNCHECKED;
 	}
 	else {
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i dchk.jpg,420,4\r");
@@ -16543,7 +16977,7 @@ void UI_Vibration_OnBnClickedBtnChk(void)
 		App_SetButtonOption(RID_VIB_BTN_CNTP, BN_PUSHED);
 		App_SetButtonOption(RID_VIB_BTN_CNTM, BN_PUSHED);
 		App_SetButtonOption(RID_VIB_BTN_CHK, BN_PUSHED);
-		Setup3.VibChk= BST_CHECKED;
+		Setup3.VibChk = BST_CHECKED;
 		if(Setup3.VDeg == 10)
 		{
 			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,285,66\r");
@@ -18799,6 +19233,7 @@ void UI_PopupResetReq_OnBnClickedOk(void)
 	temp = Setup2.language; //pjg++191223
 	UI_InitSetupVariable();
 	Setup2.language = temp;
+	UI_SaveParamToEEPROM(CommonBuf); //pjg++190813
 	UI_VersionInfo_Create();
 }
 
@@ -19476,8 +19911,8 @@ void UI_PopupAngleMeaReport_Init(void)
 	ex = 0;
 	fl = 0;
 	for (i = 0; i < ANG_MEA_TOTAL_COUNT; i++) {
-		ex += (SaveExeInfoV2.smm.mi[i].exangle-5);
-		fl += (SaveExeInfoV2.smm.mi[i].flangle-5);
+		ex += (SaveExeInfoV2.smm.mi[i].exangle-SAVE_OFFSET_VALUE);
+		fl += (SaveExeInfoV2.smm.mi[i].flangle-SAVE_OFFSET_VALUE);
 	}
 	ex /= ANG_MEA_TOTAL_COUNT;
 	fl /= ANG_MEA_TOTAL_COUNT;
@@ -19840,7 +20275,8 @@ void UI_AngleMeasure_SetAngle_Pic(short angle,short angle2)
 	APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)AngPicIndigoBuf);
 	APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)AngPicBlueBuf);
 	if (SaveExeInfoV2.flg == MST_REHAB) {
-		if ((SysInfo.meaCnt >= 1) || (Exercise.dataCnt > 0)) {
+		//if ((SysInfo.meaCnt >= 1) || (Exercise.dataCnt > 0)) {
+		if (SysInfo.meaCnt >= 1) {
 			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)pImgNameInfo[IMG_REHB_DIS][Setup2.language]);
 		}
 		else APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)pImgNameInfo[IMG_REHB_EN][Setup2.language]);
@@ -19969,10 +20405,10 @@ void UI_AngleMeasure_CheckCurrentSensitivity(void)
 	//}
 
 	if (AngChk.angle > RunWnd.angle) {
-		if ((AngChk.angle - RunWnd.angle) < 5) return;
+		if ((AngChk.angle - RunWnd.angle) < ANGLE_MIN_DEG) return;
 	}
 	else {
-		if ((RunWnd.angle- AngChk.angle) < 5) return;
+		if ((RunWnd.angle- AngChk.angle) < ANGLE_MIN_DEG) return;
 	}
 
 	AngChk.diff = cur-AngChk.prevCur;
@@ -20054,22 +20490,22 @@ void UI_AngleMeasure_DispMeaValue(void)
 		if (SysInfo.meaCnt == ANG_MEA_TOTAL_COUNT-3) {
 			UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 363,77,AngleWnd.flAngle,3);
 			if (SaveExeInfoV2.flg == MST_MEASURE) {
-				SaveExeInfoV2.smm.mi[SysInfo.meaCnt].flangle = AngleWnd.flAngle+5;
+				SaveExeInfoV2.smm.mi[SysInfo.meaCnt].flangle = AngleWnd.flAngle+SAVE_OFFSET_VALUE;
 			}
 			else {
-				SaveExeInfoV2.spm.mi.flangle = AngleWnd.flAngle+5;
+				SaveExeInfoV2.spm.mi.flangle = AngleWnd.flAngle+SAVE_OFFSET_VALUE;
 			}
 		}
 		else if (SysInfo.meaCnt == ANG_MEA_TOTAL_COUNT-2) {
 			UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_4PLACE, 363,125,AngleWnd.flAngle,3);
 			if (SaveExeInfoV2.flg == MST_MEASURE) {
-				SaveExeInfoV2.smm.mi[SysInfo.meaCnt].flangle = AngleWnd.flAngle+5;
+				SaveExeInfoV2.smm.mi[SysInfo.meaCnt].flangle = AngleWnd.flAngle+SAVE_OFFSET_VALUE;
 			}
 		}
 		else if (SysInfo.meaCnt == ANG_MEA_TOTAL_COUNT-1) {
 			UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_6PLACE, 363,172,AngleWnd.flAngle,3);
 			if (SaveExeInfoV2.flg == MST_MEASURE) {
-				SaveExeInfoV2.smm.mi[SysInfo.meaCnt].flangle = AngleWnd.flAngle+5;
+				SaveExeInfoV2.smm.mi[SysInfo.meaCnt].flangle = AngleWnd.flAngle+SAVE_OFFSET_VALUE;
 			}
 		}
 	}
@@ -20077,22 +20513,22 @@ void UI_AngleMeasure_DispMeaValue(void)
 		if (SysInfo.meaCnt == ANG_MEA_TOTAL_COUNT-3) {
 			UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE, 38,77,AngleWnd.exAngle,3);
 			if (SaveExeInfoV2.flg == MST_MEASURE) {
-				SaveExeInfoV2.smm.mi[SysInfo.meaCnt].exangle = AngleWnd.exAngle+5;
+				SaveExeInfoV2.smm.mi[SysInfo.meaCnt].exangle = AngleWnd.exAngle+SAVE_OFFSET_VALUE;
 			}
 			else {
-				SaveExeInfoV2.spm.mi.exangle = AngleWnd.exAngle+5;
+				SaveExeInfoV2.spm.mi.exangle = AngleWnd.exAngle+SAVE_OFFSET_VALUE;
 			}
 		}
 		else if (SysInfo.meaCnt == ANG_MEA_TOTAL_COUNT-2) {
 			UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_3PLACE, 38,125,AngleWnd.exAngle,3);
 			if (SaveExeInfoV2.flg == MST_MEASURE) {
-				SaveExeInfoV2.smm.mi[SysInfo.meaCnt].exangle = AngleWnd.exAngle+5;
+				SaveExeInfoV2.smm.mi[SysInfo.meaCnt].exangle = AngleWnd.exAngle+SAVE_OFFSET_VALUE;
 			}
 		}
 		else if (SysInfo.meaCnt == ANG_MEA_TOTAL_COUNT-1) {
 			UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_5PLACE, 38,172,AngleWnd.exAngle,3);
 			if (SaveExeInfoV2.flg == MST_MEASURE) {
-				SaveExeInfoV2.smm.mi[SysInfo.meaCnt].exangle = AngleWnd.exAngle+5;
+				SaveExeInfoV2.smm.mi[SysInfo.meaCnt].exangle = AngleWnd.exAngle+SAVE_OFFSET_VALUE;
 			}
 		}
 	}
@@ -20103,7 +20539,7 @@ void UI_AngleMeasure_OnBnClickedBtnSetAngle()
 	//UI_Time.tmp2_ms = 1000;
 	UI_Time.tmp3_ms = 2500;
 	if (MotorDrv_GetDirection() == MDD_CCW) { //down
-		if (RunWnd.angle < 5) return;
+		if (RunWnd.angle < ANGLE_MIN_DEG) return;
 		AngleWnd.flAngle = RunWnd.angle;
 		UI_AngleMeasure_SetAngle_Pic(RunWnd.angle, AngleWnd.flAngle);
 	}
@@ -20175,8 +20611,8 @@ void UI_AngleMeasure_Process(void)
 				//MotorDrv_Disable();
 				//MotorDrv_Release();
 				UI_AngleMeasure_DispMeaValue();
-				if (SysInfo.meaCnt < 3) SysInfo.meaCnt++;
-				if (SysInfo.meaCnt >= 3) {
+				if (SysInfo.meaCnt < ANG_MEA_TOTAL_COUNT) SysInfo.meaCnt++;
+				if (SysInfo.meaCnt >= ANG_MEA_TOTAL_COUNT) {
 					//gray background
 					APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i meacom.png,18,163\r");
 					APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i meacom.png,346,163\r");
@@ -20340,14 +20776,14 @@ void UI_AngleMeasure_OnBnClickedBtnPause(void)
 void UI_AngleMeasure_OnBnClickedBtnExUp(void)
 {
 	loading = 0;
-	if(AngleWnd.exAngle < RUN_ANGLE_MAX-ANGLE_MOVE_GAP) AngleWnd.exAngle += Setup3.AngBtnStep;
+	if(AngleWnd.exAngle < RUN_ANGLE_MAX) AngleWnd.exAngle += Setup3.AngBtnStep;
 	if (AngleWnd.exAngle > RUN_ANGLE_MAX) AngleWnd.exAngle = RUN_ANGLE_MAX;
-	if(AngleWnd.exAngle > RUN_ANGLE_MIN){
+	if(AngleWnd.exAngle > RUN_ANGLE_MIN) {
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i minus.bmp,77,166\r");
 		App_SetButtonOption(RID_ANG_BTN_EXM, BN_PUSHED);
 	}
 	//if(AngleWnd.flAngle <= (AngleWnd.exAngle+25)) AngleWnd.exAngle = AngleWnd.flAngle + 25;
-	if(AngleWnd.flAngle <= (AngleWnd.exAngle+ANGLE_MIN_GAP))
+	if(AngleWnd.flAngle <= (AngleWnd.exAngle+RUN_MIN_EXE_ANGLE))
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,16,166\r");
 		App_SetButtonOption(RID_ANG_BTN_EXP, BN_DISABLE);
@@ -20368,7 +20804,7 @@ void UI_AngleMeasure_OnBnClickedBtnExDown(void)
 		App_SetButtonOption(RID_ANG_BTN_EXM, BN_DISABLE);
 	}
 	//if(AngleWnd.flAngle > (AngleWnd.exAngle+25)) AngleWnd.exAngle = AngleWnd.flAngle + 25;
-	if(AngleWnd.flAngle > (AngleWnd.exAngle+ANGLE_MIN_GAP))
+	if(AngleWnd.flAngle > (AngleWnd.exAngle+RUN_MIN_EXE_ANGLE))
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i plus.bmp,16,166\r");
 		App_SetButtonOption(RID_ANG_BTN_EXP, BN_PUSHED);
@@ -20384,7 +20820,7 @@ void UI_AngleMeasure_OnBnClickedBtnExDown(void)
 //unsigned char 
 void UI_AngleMeasure_OnBnLongClickedBtnExUp(void)
 {
-	if(AngleWnd.flAngle <= (AngleWnd.exAngle+ANGLE_MIN_GAP))
+	if(AngleWnd.flAngle <= (AngleWnd.exAngle+RUN_MIN_EXE_ANGLE))
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,16,166\r");
 		App_SetButtonOption(RID_ANG_BTN_EXP, BN_DISABLE);
@@ -20392,12 +20828,14 @@ void UI_AngleMeasure_OnBnLongClickedBtnExUp(void)
 		App_SetButtonOption(RID_ANG_BTN_FLM, BN_DISABLE);
 	}	
 	//else if(AngleWnd.flAngle <= (AngleWnd.exAngle+30) && AngleWnd.flAngle > (AngleWnd.exAngle+ANGLE_MIN_GAP))
-	else if(AngleWnd.flAngle <= (AngleWnd.exAngle+ANGLE_MIN_GAP+5) && AngleWnd.flAngle > (AngleWnd.exAngle+ANGLE_MIN_GAP))
+	else if(AngleWnd.flAngle <= (AngleWnd.exAngle+RUN_MIN_EXE_ANGLE+ANGLE_MOVE_GAP) && 
+		AngleWnd.flAngle > (AngleWnd.exAngle+RUN_MIN_EXE_ANGLE)) {
 		AngleWnd.exAngle++;
+	}
 	else {
 		AngleWnd.exAngle += ANGLE_MOVE_GAP;
-		if (AngleWnd.exAngle%5) { //pjg++190814
-			AngleWnd.exAngle -= AngleWnd.exAngle%5;
+		if (AngleWnd.exAngle%ANGLE_MOVE_GAP) { //pjg++190814
+			AngleWnd.exAngle -= AngleWnd.exAngle%ANGLE_MOVE_GAP;
 		}
 	}
 	
@@ -20413,7 +20851,7 @@ void UI_AngleMeasure_OnBnLongClickedBtnExUp(void)
 
 void UI_AngleMeasure_OnBnLongClickedBtnExDown(void)
 {
-	if(AngleWnd.flAngle>(AngleWnd.exAngle+ANGLE_MIN_GAP))
+	if(AngleWnd.flAngle > (AngleWnd.exAngle+RUN_MIN_EXE_ANGLE))
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i plus.bmp,16,166\r");
 		App_SetButtonOption(RID_ANG_BTN_EXP, BN_PUSHED);
@@ -20423,15 +20861,16 @@ void UI_AngleMeasure_OnBnLongClickedBtnExDown(void)
 	if (AngleWnd.exAngle > -1) 
 	{
 		AngleWnd.exAngle -= ANGLE_MOVE_GAP;	
-		if (AngleWnd.exAngle%5) { //pjg++190814
-			AngleWnd.exAngle -= AngleWnd.exAngle%5;
+		if (AngleWnd.exAngle%ANGLE_MOVE_GAP) { //pjg++190814
+			AngleWnd.exAngle -= AngleWnd.exAngle%ANGLE_MOVE_GAP;
 		}
 	}
-	else if(AngleWnd.exAngle >= -1 || AngleWnd.exAngle > RUN_ANGLE_MIN)
+	else if(AngleWnd.exAngle >= -1 || AngleWnd.exAngle > RUN_ANGLE_MIN) {
 		AngleWnd.exAngle --;
+	}
 	//else return;
 	//UI_Angle_SetAngle_Pic((AngleWnd.exAngle/5)*5,(AngleWnd.flAngle/5)*5);
-	if(AngleWnd.exAngle == RUN_ANGLE_MIN){
+	if(AngleWnd.exAngle <= RUN_ANGLE_MIN){
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,77,166\r");
 		App_SetButtonOption(RID_ANG_BTN_EXM, BN_DISABLE);
 	}
@@ -20448,7 +20887,7 @@ void UI_AngleMeasure_OnBnClickedBtnFlUp(void)
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,345,166\r");
 		App_SetButtonOption(RID_ANG_BTN_FLP, BN_DISABLE);
 	}
-	if(AngleWnd.exAngle < (AngleWnd.flAngle-ANGLE_MIN_GAP))
+	if(AngleWnd.exAngle < (AngleWnd.flAngle-RUN_MIN_EXE_ANGLE))
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i minus.bmp,405,166\r");
 		App_SetButtonOption(RID_ANG_BTN_FLM, BN_PUSHED);
@@ -20461,7 +20900,7 @@ void UI_AngleMeasure_OnBnClickedBtnFlUp(void)
 }
 
 void UI_AngleMeasure_OnBnClickedBtnFlDown(void){
-	if(AngleWnd.flAngle > ANGLE_MIN_GAP+Setup3.AngBtnStep) AngleWnd.flAngle -= Setup3.AngBtnStep;
+	if(AngleWnd.flAngle > Setup3.AngBtnStep) AngleWnd.flAngle -= Setup3.AngBtnStep;
 	else AngleWnd.flAngle--;
 	if (AngleWnd.flAngle < RUN_ANGLE_MIN) AngleWnd.flAngle = RUN_ANGLE_MIN;
 	if(AngleWnd.flAngle < RUN_ANGLE_MAX){
@@ -20469,7 +20908,7 @@ void UI_AngleMeasure_OnBnClickedBtnFlDown(void){
 		App_SetButtonOption(RID_ANG_BTN_FLP, BN_PUSHED);
 	}
 	//if (AngleWnd.exAngle >= (AngleWnd.flAngle-25)) AngleWnd.flAngle = AngleWnd.exAngle-25;
-	if(AngleWnd.exAngle >= (AngleWnd.flAngle-ANGLE_MIN_GAP))
+	if(AngleWnd.exAngle >= (AngleWnd.flAngle-RUN_MIN_EXE_ANGLE))
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,405,166\r");
 		App_SetButtonOption(RID_ANG_BTN_FLM, BN_DISABLE);
@@ -20483,7 +20922,7 @@ void UI_AngleMeasure_OnBnClickedBtnFlDown(void){
 
 void UI_AngleMeasure_OnBnLongClickedBtnFlUp(void)
 {	
-	if(AngleWnd.exAngle < (AngleWnd.flAngle-ANGLE_MIN_GAP))
+	if(AngleWnd.exAngle < (AngleWnd.flAngle-RUN_MIN_EXE_ANGLE))
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i plus.bmp,16,166\r");
 		App_SetButtonOption(RID_ANG_BTN_EXP, BN_PUSHED);
@@ -20491,19 +20930,20 @@ void UI_AngleMeasure_OnBnLongClickedBtnFlUp(void)
 		App_SetButtonOption(RID_ANG_BTN_FLM, BN_PUSHED);
 	}
 	
-	if (AngleWnd.flAngle < 136){ //AngleWnd.exAngle = 0;
+	if (AngleWnd.flAngle <= (RUN_ANGLE_MAX-ANGLE_MOVE_GAP)) { //AngleWnd.exAngle = 0;
 		AngleWnd.flAngle += ANGLE_MOVE_GAP;
-		if (AngleWnd.flAngle%5) { //pjg++190814
-			AngleWnd.flAngle -= AngleWnd.flAngle%5;
+		if (AngleWnd.flAngle%ANGLE_MOVE_GAP) { //pjg++190814
+			AngleWnd.flAngle -= AngleWnd.flAngle%ANGLE_MOVE_GAP;
 		}
 	}
-	else if(AngleWnd.flAngle <= 136 || AngleWnd.flAngle < RUN_ANGLE_MAX)
+	else if(AngleWnd.flAngle < (RUN_ANGLE_MAX-ANGLE_MOVE_GAP+1)) {// || AngleWnd.flAngle < RUN_ANGLE_MAX) {
 		AngleWnd.flAngle++;
+	}
 	//else return;
 
 	//if(AngleWnd.exAngle%5 <= 0)
 //	UI_Angle_SetAngle_Pic((AngleWnd.exAngle/5)*5,(AngleWnd.flAngle/5)*5);
-	if(AngleWnd.flAngle == RUN_ANGLE_MAX){
+	if(AngleWnd.flAngle >= RUN_ANGLE_MAX){
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,345,166\r");
 		App_SetButtonOption(RID_ANG_BTN_FLP, BN_DISABLE);
 	}
@@ -20513,18 +20953,20 @@ void UI_AngleMeasure_OnBnLongClickedBtnFlUp(void)
 
 void UI_AngleMeasure_OnBnLongClickedBtnFlDown(void)
 {
-	if(AngleWnd.exAngle >= (AngleWnd.flAngle-ANGLE_MIN_GAP) || AngleWnd.flAngle == 20)
+	if(AngleWnd.exAngle >= (AngleWnd.flAngle-RUN_MIN_EXE_ANGLE) || AngleWnd.flAngle == 20)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,16,166\r");
 		App_SetButtonOption(RID_ANG_BTN_EXP, BN_DISABLE);
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,405,166\r");
 		App_SetButtonOption(RID_ANG_BTN_FLM, BN_DISABLE);
 	}	
-	else if(AngleWnd.exAngle >= (AngleWnd.flAngle-(ANGLE_MIN_GAP+5)) && AngleWnd.exAngle < (AngleWnd.flAngle-ANGLE_MIN_GAP))											
+	else if(AngleWnd.exAngle >= (AngleWnd.flAngle-(ANGLE_MIN_GAP+5)) && 
+		AngleWnd.exAngle < (AngleWnd.flAngle-ANGLE_MIN_GAP)) {							
 		AngleWnd.flAngle--;
+	}
 	else {
 		AngleWnd.flAngle -= ANGLE_MOVE_GAP;
-		if (AngleWnd.flAngle%5) { //pjg++190814
+		if (AngleWnd.flAngle%ANGLE_MOVE_GAP) { //pjg++190814
 			AngleWnd.flAngle -= AngleWnd.flAngle%5;
 		}
 	}
@@ -20647,21 +21089,23 @@ void UI_AngleMeasure_SetRehabMode(void)
 			58, 46, hParent, RID_ANG_BTN_FLM, 0);
 
 	if ((SysInfo.meaCnt >= 1) || (Exercise.dataCnt > 0)) {
-		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE, 38,77, SaveExeInfoV2.spm.mi.exangle-5,3);
-		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 363,77, SaveExeInfoV2.spm.mi.flangle-5,3);
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i meacom.png,18,69\r");
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i meacom.png,346,69\r");
-		if ((SaveExeInfoV2.spm.mi.exangle-5) >= Setup3.AutoAngValue) {
-			AngleWnd.exAngle = SaveExeInfoV2.spm.mi.exangle - 5 - Setup3.AutoAngValue;
+		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE, 38,77, SaveExeInfoV2.spm.mi.exangle-SAVE_OFFSET_VALUE,3);
+		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 363,77, SaveExeInfoV2.spm.mi.flangle-SAVE_OFFSET_VALUE,3);
+		if (SysInfo.meaCnt >= 1) {
+			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i meacom.png,18,69\r");
+			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i meacom.png,346,69\r");
+		}
+		if ((SaveExeInfoV2.spm.mi.exangle-SAVE_OFFSET_VALUE) >= Setup3.AutoAngValue) { //-5 is sub value because add 5 when save exangle value
+			AngleWnd.exAngle = SaveExeInfoV2.spm.mi.exangle - SAVE_OFFSET_VALUE - Setup3.AutoAngValue;
 			if (AngleWnd.exAngle < RUN_ANGLE_MIN) AngleWnd.exAngle = RUN_ANGLE_MIN;
-			UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_3PLACE, 38,125,AngleWnd.exAngle,3);
 		}
 		else {
-            AngleWnd.exAngle = SaveExeInfoV2.spm.mi.exangle - 5 - Setup3.AutoAngValue;
+            AngleWnd.exAngle = SaveExeInfoV2.spm.mi.exangle - SAVE_OFFSET_VALUE - Setup3.AutoAngValue;
 			if (AngleWnd.exAngle < RUN_ANGLE_MIN) AngleWnd.exAngle = RUN_ANGLE_MIN;
-			UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_3PLACE, 38,125,AngleWnd.exAngle,3);
 		}
-		AngleWnd.flAngle = SaveExeInfoV2.spm.mi.flangle - 5 + Setup3.AutoAngValue;
+		AngleWnd.flAngle = SaveExeInfoV2.spm.mi.flangle - SAVE_OFFSET_VALUE + Setup3.AutoAngValue;
+		if (AngleWnd.flAngle > RUN_ANGLE_MAX) AngleWnd.flAngle = RUN_ANGLE_MAX;
+		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_3PLACE, 38,125,AngleWnd.exAngle,3);
 		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_4PLACE, 363,125,AngleWnd.flAngle,3);
 		if (SysInfo.meaCnt >= 1) App_SetButtonOption(RID_ANG_BTN_REH+Setup2.language, BN_DISABLE);
 		//APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)pImgNameInfo[IMG_REHB_DIS][Setup2.language]);
@@ -20673,14 +21117,6 @@ void UI_AngleMeasure_SetRehabMode(void)
 		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_4PLACE, 363,125,AngleWnd.flAngle,3); //pjg<>200110
 		//APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nright.bmp,324,222\r");
 		//App_SetButtonOption(RID_ANG_BTN_RIGHT, BN_DISABLE);
-		//APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,16,166\r");
-		//App_SetButtonOption(RID_ANG_BTN_EXP, BN_DISABLE);
-		//APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,77,166\r");
-		//App_SetButtonOption(RID_ANG_BTN_EXM, BN_DISABLE);
-		//APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,345,166\r");
-		//App_SetButtonOption(RID_ANG_BTN_FLP, BN_DISABLE);
-		//APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,405,166\r");
-		//App_SetButtonOption(RID_ANG_BTN_FLM, BN_DISABLE);
 	}
 
 	if(AngleWnd.exAngle > RUN_ANGLE_MIN){
@@ -20701,7 +21137,7 @@ void UI_AngleMeasure_SetRehabMode(void)
 		App_SetButtonOption(RID_ANG_BTN_FLP, BN_DISABLE);
 	}
 	
-	if(AngleWnd.flAngle <= (AngleWnd.exAngle+25))
+	if(AngleWnd.flAngle <= (AngleWnd.exAngle+RUN_MIN_EXE_ANGLE+Setup3.AutoAngValue))
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,16,166\r");
 		App_SetButtonOption(RID_ANG_BTN_EXP, BN_DISABLE);
@@ -20718,12 +21154,12 @@ void UI_AngleMeasure_SetMeasureMode(void)
 			124, 124, hParent, RID_ANG_BTN_MEA+Setup2.language, 0);
 	
 	if (SysInfo.meaCnt >= ANG_MEA_TOTAL_COUNT) {
-		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE, 38,77,SaveExeInfoV2.smm.mi[0].exangle-5,3);//AngleWnd.exAngle,3);
-		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 363,77,SaveExeInfoV2.smm.mi[0].flangle-5,3);//AngleWnd.flAngle,3);
-		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_3PLACE, 38,125,SaveExeInfoV2.smm.mi[1].exangle-5,3);
-		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_4PLACE, 363,125,SaveExeInfoV2.smm.mi[1].flangle-5,3);
-		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_5PLACE, 38,172,SaveExeInfoV2.smm.mi[2].exangle-5,3);
-		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_6PLACE, 363,172,SaveExeInfoV2.smm.mi[2].flangle-5,3);
+		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE, 38,77,SaveExeInfoV2.smm.mi[0].exangle-SAVE_OFFSET_VALUE,3);//AngleWnd.exAngle,3);
+		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 363,77,SaveExeInfoV2.smm.mi[0].flangle-SAVE_OFFSET_VALUE,3);//AngleWnd.flAngle,3);
+		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_3PLACE, 38,125,SaveExeInfoV2.smm.mi[1].exangle-SAVE_OFFSET_VALUE,3);
+		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_4PLACE, 363,125,SaveExeInfoV2.smm.mi[1].flangle-SAVE_OFFSET_VALUE,3);
+		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_5PLACE, 38,172,SaveExeInfoV2.smm.mi[2].exangle-SAVE_OFFSET_VALUE,3);
+		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_6PLACE, 363,172,SaveExeInfoV2.smm.mi[2].flangle-SAVE_OFFSET_VALUE,3);
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i meacom.png,18,69\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i meacom.png,18,117\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i meacom.png,18,163\r");
@@ -20732,10 +21168,10 @@ void UI_AngleMeasure_SetMeasureMode(void)
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i meacom.png,346,163\r");
 	}
 	else if (SysInfo.meaCnt >= ANG_MEA_TOTAL_COUNT-1) {
-		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE, 38,77,SaveExeInfoV2.smm.mi[0].exangle-5,3);//AngleWnd.exAngle,3);
-		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 363,77,SaveExeInfoV2.smm.mi[0].flangle-5,3);//AngleWnd.flAngle,3);
-		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_3PLACE, 38,125,SaveExeInfoV2.smm.mi[1].exangle-5,3);
-		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_4PLACE, 363,125,SaveExeInfoV2.smm.mi[1].flangle-5,3);
+		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE, 38,77,SaveExeInfoV2.smm.mi[0].exangle-SAVE_OFFSET_VALUE,3);//AngleWnd.exAngle,3);
+		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 363,77,SaveExeInfoV2.smm.mi[0].flangle-SAVE_OFFSET_VALUE,3);//AngleWnd.flAngle,3);
+		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_3PLACE, 38,125,SaveExeInfoV2.smm.mi[1].exangle-SAVE_OFFSET_VALUE,3);
+		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_4PLACE, 363,125,SaveExeInfoV2.smm.mi[1].flangle-SAVE_OFFSET_VALUE,3);
 		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_5PLACE, 38,172,0,3);
 		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_6PLACE, 363,172,RunWnd.angle,3);
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i meacom.png,18,69\r");
@@ -20744,8 +21180,8 @@ void UI_AngleMeasure_SetMeasureMode(void)
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i meacom.png,346,117\r");
 	}
 	else if (SysInfo.meaCnt >= ANG_MEA_TOTAL_COUNT-2) {
-		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE, 38,77,SaveExeInfoV2.smm.mi[0].exangle-5,3);//AngleWnd.exAngle,3);
-		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 363,77,SaveExeInfoV2.smm.mi[0].flangle-5,3);//AngleWnd.flAngle,3);
+		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE, 38,77,SaveExeInfoV2.smm.mi[0].exangle-SAVE_OFFSET_VALUE,3);//AngleWnd.exAngle,3);
+		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 363,77,SaveExeInfoV2.smm.mi[0].flangle-SAVE_OFFSET_VALUE,3);//AngleWnd.flAngle,3);
 		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_3PLACE, 38,125,0,3);
 		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_4PLACE, 363,125,RunWnd.angle,3);
 		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_5PLACE, 38,172,0,3);
@@ -20814,7 +21250,7 @@ void UI_AngleMeasure_Init(void)
 	}
 	
 	if (SaveExeInfoV2.flg == MST_MEASURE) {
-		if (SysInfo.meaCnt < 3 && RunWnd.play != UI_RUN_MODE_STOP) {
+		if (SysInfo.meaCnt < ANG_MEA_TOTAL_COUNT && RunWnd.play != UI_RUN_MODE_STOP) {
 			UI_AngleMeasure_OnBnClickedBtnAutoCheckAngle();
 		}
 	}

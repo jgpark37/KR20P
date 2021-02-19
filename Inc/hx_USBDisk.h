@@ -46,6 +46,7 @@ extern uint32_t USBDisk_Read(uint8_t *buf, uint32_t len);
 extern uint32_t USBDisk_Write(uint8_t *buf, uint32_t len);
 extern uint32_t USBDisk_OpenRead(char *name);
 extern uint32_t USBDisk_OpenWrite(char *name);
+extern uint32_t USBDisk_OpenAlwaysWrite(char *name);
 extern void USBDisk_Close(void);
 extern int USBDisk_IsReady(uint16_t wait);
 extern void USBDisk_SetReadyFlag(uint8_t flag);

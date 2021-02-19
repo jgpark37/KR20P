@@ -481,7 +481,9 @@ int main(void)
 				//halt();
 				while (1);
 			}
-			HAL_Delay(2000);
+			for (int i = 0; i < 2000; i++) {
+				HAL_Delay(1);
+			}
 		}
 	}
    }
