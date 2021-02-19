@@ -48,7 +48,7 @@ source
 /* Private define ------------------------------------------------------------*/
 //#define USE_DEBUG_MODE
 #define USE_CALIB_ONLY_0KG					//pjg++200110
-#define USE_QC_LIFE_TEST_SAVE_CUR			//pjg++200131 : current save to usb every 60min, run time max is 999min, display usb check message
+//#define USE_QC_LIFE_TEST_SAVE_CUR			//pjg++200131 : current save to usb every 60min, run time max is 999min, display usb check message
 //
 #define PATIENT_NUM					84
 #define PATIENT_INFO_SIZE			2048	// eeprom 256KByte
@@ -393,7 +393,7 @@ const char COMPANY_t[COMPANY_LENGTH] = {"HEXAR SYSTEMS"};
 const char MODEL_t[MODEL_LENGTH] = {"KR20P"};
 //v1.1.0 : hw v2.1
 //v1.2.0 : hw v1.8 product 
-const uint8_t FW_VER[] = {'1', '2', '0'};//v1.0.Korea Gxx
+const uint8_t FW_VER[] = {'1', '2', '1'};//v1.0.Korea Gxx
 const uint8_t HW_VER[] = {'1', '8'};									
 const MYDATE_FMT CREATE_DATE = {2017, 3, 24};		//2017y, 3m, 24d
 const uint8_t CREATE_TIME[3] = {16, 31, 55};		//hour, min, sec
@@ -3185,7 +3185,7 @@ void UI_DisplayDecimal(char font, uint8_t pos, int x, int y, short num)
 
 void UI_DisplayDecimalSel(char font, uint8_t pos, int x, int y, short num, uint8_t unit_num)
 {
-	char temp, temp2;
+	int temp, temp2, temp3;
 	
 	if (font == UI_DISP_NUM_FNT5) {	
 		if (pos > DISP_NUM_SDISP_SAME_TIME) return;
@@ -3194,8 +3194,24 @@ void UI_DisplayDecimalSel(char font, uint8_t pos, int x, int y, short num, uint8
 		if (pos > DISP_NUM_DISP_SAME_TIME) return;
 	}
 
-	if(num > 999){
+	if(num > 9999){
 		return;
+	}
+	else if(num > 999){
+		temp = num%1000;
+		temp2 = temp%100;
+		temp3 = temp2%10;
+		UI_DisplayNumber(font, x, y, num/1000, pos+3);
+		if (font == UI_DISP_NUM_FNT5) {
+			UI_DisplayNumber(font, x+DISP_NUM_5P_10_POS, y, temp/100, pos+2);
+			UI_DisplayNumber(font, x+DISP_NUM_5P_1_POS, y, temp2/10, pos+1);
+			UI_DisplayNumber(font, x+DISP_NUM_5P_1_POS+DISP_NUM_5P_10_POS, y, temp3, pos+0);
+		}
+		else {
+			UI_DisplayNumber(font, x+DISP_NUM_9P_10_POS, y, temp/100, pos+2);
+			UI_DisplayNumber(font, x+DISP_NUM_9P_1_POS, y, temp2/10, pos+1);
+			UI_DisplayNumber(font, x+DISP_NUM_9P_1_POS+DISP_NUM_9P_10_POS, y, temp3, pos+0);
+		}
 	}
 	else if (num < -99) {
 	}          
@@ -6545,9 +6561,12 @@ void UI_Home_Init(void)
 		uart_putstring("fc 255,0,0\r"); 	  
 		uart_putstring("f USB detected ,5,240\r");
 	}
+	else {
+		uart_putstring("fc 255,0,0\r"); 	  
+		uart_putstring("f USB not detected ,5,240\r");
+	}
 	USBDisk_UnMount();
 	USBDisk_UnLink();
-
 #endif
 }
 
@@ -7395,7 +7414,7 @@ void UI_SpeedTime_OnBnClickedBtnTmDown(void)
 			App_SetButtonOption(RID_STS_BTN_TMM, BN_DISABLE);
 		}
 #ifdef USE_QC_LIFE_TEST_SAVE_CUR
-		if(SpdTmWnd.time < 999)
+		if(SpdTmWnd.time < 9999)
 #else
 		if(SpdTmWnd.time < 60)
 #endif
@@ -7405,7 +7424,7 @@ void UI_SpeedTime_OnBnClickedBtnTmDown(void)
 		}
 	}
 #ifdef USE_QC_LIFE_TEST_SAVE_CUR
-	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 355, 94, SpdTmWnd.time,3);
+	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 355, 94, SpdTmWnd.time,4);
 #else
 	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 355, 94, SpdTmWnd.time,2);
 #endif
@@ -7416,9 +7435,9 @@ void UI_SpeedTime_OnBnClickedBtnTmDown(void)
 void UI_SpeedTime_OnBnLongClickedBtnTmUp(void)
 {	
 #ifdef USE_QC_LIFE_TEST_SAVE_CUR
-	if(SpdTmWnd.time < 999)
+	if(SpdTmWnd.time < 9999)
 	{	
-		if (SpdTmWnd.time < (999-5))  SpdTmWnd.time += 5;
+		if (SpdTmWnd.time < (9999-5))  SpdTmWnd.time += 5;
 		else// if(SpdTmWnd.time >= 56) 
 			SpdTmWnd.time++;
 	}
@@ -7442,7 +7461,7 @@ void UI_SpeedTime_OnBnLongClickedBtnTmUp(void)
 			App_SetButtonOption(RID_STS_BTN_TMM, BN_PUSHED);
 		}
 #ifdef USE_QC_LIFE_TEST_SAVE_CUR
-		if(SpdTmWnd.time == 999){
+		if(SpdTmWnd.time == 9999){
 #else
 		if(SpdTmWnd.time == 60){
 #endif
@@ -7451,7 +7470,7 @@ void UI_SpeedTime_OnBnLongClickedBtnTmUp(void)
 		}
 	}
 #ifdef USE_QC_LIFE_TEST_SAVE_CUR
-	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 355, 94, SpdTmWnd.time,3);
+	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 355, 94, SpdTmWnd.time,4);
 #else
 	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 355, 94, SpdTmWnd.time,2);
 #endif
@@ -7487,7 +7506,7 @@ void UI_SpeedTime_OnBnLongClickedBtnTmDown(void)
 		App_SetButtonOption(RID_STS_BTN_TMM, BN_DISABLE);
 	}
 #ifdef USE_QC_LIFE_TEST_SAVE_CUR
-	if(SpdTmWnd.time < 999)
+	if(SpdTmWnd.time < 9999)
 #else
 	if(SpdTmWnd.time < 60)
 #endif
@@ -7497,7 +7516,7 @@ void UI_SpeedTime_OnBnLongClickedBtnTmDown(void)
 	}
 
 #ifdef USE_QC_LIFE_TEST_SAVE_CUR
-	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 355, 94, SpdTmWnd.time,3);
+	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 355, 94, SpdTmWnd.time,4);
 #else
 	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 355, 94, SpdTmWnd.time,2);
 #endif
@@ -7568,7 +7587,7 @@ void UI_SpeedTime_Init(void)
 	
 	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE, pos,94, SpdTmWnd.speed,1);
 	#ifdef USE_QC_LIFE_TEST_SAVE_CUR
-	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 355, 94, SpdTmWnd.time,3);
+	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 355, 94, SpdTmWnd.time,4);
 	#else
 	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 355, 94, SpdTmWnd.time,2);
 	#endif
@@ -7601,7 +7620,7 @@ void UI_SpeedTime_Init(void)
 		App_SetButtonOption(RID_STS_BTN_TMM, BN_DISABLE);
 	}
 #ifdef USE_QC_LIFE_TEST_SAVE_CUR
-	else if(SpdTmWnd.time == 999)
+	else if(SpdTmWnd.time == 9999)
 #else
 	else if(SpdTmWnd.time == 60)
 #endif
@@ -8036,7 +8055,9 @@ void UI_Run_DisplayValue(void)
 {
 	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_3PLACE, 30,160, RunWnd.angle, 3);
 	UI_DisplayDecimal_5Unit(UI_DISP_NUM_FNT9, UI_DISP_NUM_4PLACE, 372,85, RunWnd.repeat);
-	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_5PLACE, 370,160, RunWnd.time, 3);
+#ifdef USE_QC_LIFE_TEST_SAVE_CUR
+	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_5PLACE, 370,160, RunWnd.time, 4);
+#endif
 	 //구동 반복한 횟수 표현
 	//UI_DisplayDecimal(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE, 372,83, RunWnd.repeat);
        //모터 각도 표현
@@ -16472,7 +16493,7 @@ void UI_Pause_OnBnClickedBtnRight(void)
 	
 	UI_Vibration_Create();
 }
-
+#define LIMITED_PAUSE_MAX_VALUE				99
 void UI_Pause_OnBnClickedBtnUp(void)
 {
 	int pos;
@@ -16480,8 +16501,8 @@ void UI_Pause_OnBnClickedBtnUp(void)
 	if (Setup2.language == LT_CHINA) pos = 148;
 	else pos = 158;
 	
-	if(Setup3.LP < 10) Setup3.LP ++;
-	if(Setup3.LP == 10)
+	if(Setup3.LP < LIMITED_PAUSE_MAX_VALUE) Setup3.LP ++;
+	if(Setup3.LP == LIMITED_PAUSE_MAX_VALUE)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,285,103\r");
 		App_SetButtonOption(RID_LP_BTN_PAUSEP, BN_DISABLE);
@@ -16509,7 +16530,7 @@ void UI_Pause_OnBnClickedBtnDown(void)
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,345,102\r");
 		App_SetButtonOption(RID_LP_BTN_PAUSEM, BN_DISABLE);
 	}
-	if(Setup3.LP < 10)
+	if(Setup3.LP < LIMITED_PAUSE_MAX_VALUE)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i plus.bmp,286,102\r");
 		App_SetButtonOption(RID_LP_BTN_PAUSEP, BN_PUSHED);
@@ -16523,15 +16544,19 @@ void UI_Pause_OnBnLongClickedBtnUp(void)
 	
 	if (Setup2.language == LT_CHINA) pos = 148;
 	else pos = 158;
-	
+
+	/*
 	if (Setup3.LP < 8) 
 	{
 		Setup3.LP += 2;
 	}
-	else if(Setup3.LP<= 8 || Setup3.LP < 10)
-		Setup3.LP++;
+	//else if(Setup3.LP<= 8 || Setup3.LP < 98)
+	else if(Setup3.LP<= 8 || Setup3.LP < 98)*/
+	if (Setup3.LP < LIMITED_PAUSE_MAX_VALUE-5)
+		Setup3.LP += 5;
+	else  Setup3.LP++;
 
-	if(Setup3.LP == 10)
+	if(Setup3.LP == LIMITED_PAUSE_MAX_VALUE)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,285,103\r");
 		App_SetButtonOption(RID_LP_BTN_PAUSEP, BN_DISABLE);
@@ -16552,19 +16577,23 @@ void UI_Pause_OnBnLongClickedBtnDown(void)
 	if (Setup2.language == LT_CHINA) pos = 148;
 	else pos = 158;
 	
-	if (Setup3.LP > 3) 
+	/*if (Setup3.LP > 3) 
 	{
 		Setup3.LP -= 2;	
 	}
 
-	else if(Setup3.LP>= 3  || Setup3.LP> 1)
-		Setup3.LP --;
+	else if(Setup3.LP>= 3  || Setup3.LP> 1)*/
+	if (Setup3.LP > 5)
+		Setup3.LP -= 5;
+	else {
+		if (Setup3.LP > 1) Setup3.LP--;
+	}
 	if(Setup3.LP == 1)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,345,102\r");
 		App_SetButtonOption(RID_LP_BTN_PAUSEM, BN_DISABLE);
 	}
-	if(Setup3.LP < 10)
+	if(Setup3.LP < LIMITED_PAUSE_MAX_VALUE)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i plus.bmp,286,102\r");
 		App_SetButtonOption(RID_LP_BTN_PAUSEP, BN_PUSHED);
@@ -16594,7 +16623,7 @@ void UI_Pause_OnBnClickedBtnChk(void)
 			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,345,102\r");
 			App_SetButtonOption(RID_LP_BTN_PAUSEM, BN_DISABLE);
 		}
-		if(Setup3.LP == 10)
+		if(Setup3.LP == LIMITED_PAUSE_MAX_VALUE)
 		{
 			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,285,103\r");
 			App_SetButtonOption(RID_LP_BTN_PAUSEP, BN_DISABLE);
@@ -16656,7 +16685,7 @@ void UI_Pause_Init(void)
 			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,345,102\r");
 			App_SetButtonOption(RID_LP_BTN_PAUSEM, BN_DISABLE);
 		}
-		if(Setup3.LP == 10)
+		if(Setup3.LP == LIMITED_PAUSE_MAX_VALUE)
 		{
 			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,285,103\r");
 			App_SetButtonOption(RID_LP_BTN_PAUSEP, BN_DISABLE);
@@ -19033,7 +19062,7 @@ void UI_VersionInfo_CompileDateTime(void)
 
 	k = 0;
 	num_buf[k++] = '0';
-	switch (CompileDate[0]) {
+	switch (CompileDate[0]) { //month 2unit
 		case 'J' : //1,6,7
 			if (CompileDate[1] == 'a') num_buf[k++] = '1';
 			else if (CompileDate[1] == 'u') {
@@ -19070,7 +19099,7 @@ void UI_VersionInfo_CompileDateTime(void)
 			break;
 	}
 	num_buf[k++] = '.';
-	if (CompileDate[4] == ' ') {
+	if (CompileDate[4] == ' ') { //day
 		num_buf[k++] = CompileDate[5];
 	}
 	else {
@@ -19086,7 +19115,7 @@ void UI_VersionInfo_CompileDateTime(void)
 
 	pos = 253;
 	k = 0;
-	for (i = 0; i < 11; i++) {
+	for (i = 0; i < 11; i++) { //year
 		if (num_buf[i] == 0) break;
 		if (num_buf[i] == '.') {
 			if (i == 2) APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i dt.png,273,104\r"); 
