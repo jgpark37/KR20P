@@ -27,7 +27,7 @@ extern TIM_HandleTypeDef htim7;
 //#define   SET_SPEED           97
 */
 #define   START_PWM           18000 
-#define   OVER_CURRENT        250
+#define   OVER_CURRENT       600// 250
 
 void Motor_Init(void);
 void Motor_direction(void);
