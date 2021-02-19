@@ -1,0 +1,29 @@
+D:\project\HEXAR\SMART_CPM_V1_8 - 18.08.06(최종)\Src\hx_API.c
+  Non-empty switch case falls through without 'fallthrough' comment	SWITCH-fall-through	Medium	D:\project\HEXAR\SMART_CPM_V1_8 - 18.08.06(최종)\Src\hx_API.c:141
+    API_CreateWindow	D:\project\HEXAR\SMART_CPM_V1_8 - 18.08.06(최종)\Src\hx_API.c
+      SWITCH-fall-through ... : Switch	D:\project\HEXAR\SMART_CPM_V1_8 - 18.08.06(최종)\Src\hx_API.c:140
+      SWITCH-fall-through ... : case 195:	D:\project\HEXAR\SMART_CPM_V1_8 - 18.08.06(최종)\Src\hx_API.c:141
+      if (wndClassNum>=WINDOW_CLASS_NUM) is false	D:\project\HEXAR\SMART_CPM_V1_8 - 18.08.06(최종)\Src\hx_API.c:145
+      other_labels_comment	D:\project\HEXAR\SMART_CPM_V1_8 - 18.08.06(최종)\Src\hx_API.c:151
+  Non-empty switch case falls through without 'fallthrough' comment	SWITCH-fall-through	Medium	D:\project\HEXAR\SMART_CPM_V1_8 - 18.08.06(최종)\Src\hx_API.c:151
+    API_CreateWindow	D:\project\HEXAR\SMART_CPM_V1_8 - 18.08.06(최종)\Src\hx_API.c
+      SWITCH-fall-through ... : Switch	D:\project\HEXAR\SMART_CPM_V1_8 - 18.08.06(최종)\Src\hx_API.c:140
+      case 195:	D:\project\HEXAR\SMART_CPM_V1_8 - 18.08.06(최종)\Src\hx_API.c:141
+      if (wndClassNum>=WINDOW_CLASS_NUM) is false	D:\project\HEXAR\SMART_CPM_V1_8 - 18.08.06(최종)\Src\hx_API.c:145
+      SWITCH-fall-through ... : case 0:	D:\project\HEXAR\SMART_CPM_V1_8 - 18.08.06(최종)\Src\hx_API.c:151
+      other_labels_comment	D:\project\HEXAR\SMART_CPM_V1_8 - 18.08.06(최종)\Src\hx_API.c:153
+D:\project\HEXAR\SMART_CPM_V1_8 - 18.08.06(최종)\Src\hx_EEPROM.c
+  Value assigned to variable `hstd' is never used	RED-unused-assign	Low	D:\project\HEXAR\SMART_CPM_V1_8 - 18.08.06(최종)\Src\hx_EEPROM.c:143
+  Value assigned to variable `hstd' is never used	RED-unused-assign	Low	D:\project\HEXAR\SMART_CPM_V1_8 - 18.08.06(최종)\Src\hx_EEPROM.c:185
+  Value assigned to variable `hstd' is never used	RED-unused-assign	Low	D:\project\HEXAR\SMART_CPM_V1_8 - 18.08.06(최종)\Src\hx_EEPROM.c:287
+  Value assigned to variable `filename' is never used	RED-unused-assign	Low	D:\project\HEXAR\SMART_CPM_V1_8 - 18.08.06(최종)\Src\hx_EEPROM.c:825
+  Value assigned to variable `filename' is never used	RED-unused-assign	Low	D:\project\HEXAR\SMART_CPM_V1_8 - 18.08.06(최종)\Src\hx_EEPROM.c:856
+D:\project\HEXAR\SMART_CPM_V1_8 - 18.08.06(최종)\Src\hx_Message.c
+  Value assigned to variable `pmsg' is never used	RED-unused-assign	Low	D:\project\HEXAR\SMART_CPM_V1_8 - 18.08.06(최종)\Src\hx_Message.c:90
+D:\project\HEXAR\SMART_CPM_V1_8 - 18.08.06(최종)\Src\hx_MotroDriver.c
+  Value assigned to variable `temp' is never used	RED-unused-assign	Low	D:\project\HEXAR\SMART_CPM_V1_8 - 18.08.06(최종)\Src\hx_MotroDriver.c:133
+D:\project\HEXAR\SMART_CPM_V1_8 - 18.08.06(최종)\Src\hx_TouchLCD.c
+  Expression `temp-i' with range [-3,3] may overflow to [0,255] when implicitly converted to unsigned 8-bit int	ATH-overflow	Medium	D:\project\HEXAR\SMART_CPM_V1_8 - 18.08.06(최종)\Src\hx_TouchLCD.c:96
+D:\project\HEXAR\SMART_CPM_V1_8 - 18.08.06(최종)\Src\hx_UI.c
+  Value assigned to variable `id' is never used	RED-unused-assign	Low	D:\project\HEXAR\SMART_CPM_V1_8 - 18.08.06(최종)\Src\hx_UI.c:2034
+  Value assigned to variable `save_num' is never used	RED-unused-assign	Low	D:\project\HEXAR\SMART_CPM_V1_8 - 18.08.06(최종)\Src\hx_UI.c:2079
