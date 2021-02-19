@@ -393,7 +393,7 @@ const char COMPANY_t[COMPANY_LENGTH] = {"HEXAR SYSTEMS"};
 const char MODEL_t[MODEL_LENGTH] = {"KR20P"};
 //v1.1.0 : hw v2.1
 //v1.2.0 : hw v1.8 product 
-const uint8_t FW_VER[] = {'1', '2', '1'};//v1.0.Korea Gxx
+const uint8_t FW_VER[] = {'1', '2', '2'};//v1.0.Korea Gxx
 const uint8_t HW_VER[] = {'1', '8'};									
 const MYDATE_FMT CREATE_DATE = {2017, 3, 24};		//2017y, 3m, 24d
 const uint8_t CREATE_TIME[3] = {16, 31, 55};		//hour, min, sec
@@ -743,7 +743,7 @@ typedef __packed struct _tagSAVE_PLAY_MODE {
 }SAVE_PLAY_MODE;
 
 typedef __packed union _tagSAVE_EXERCISE_INFO_V2 {
-	uint8_t flg; //'P': play mode, 'M':measure mode
+	uint8_t flg; //0: play mode, 1:measure mode
 	SAVE_MEASURE_MODE smm;
 	SAVE_PLAY_MODE spm;
 }SAVE_EXERCISE_INFO_V2;
@@ -3518,7 +3518,7 @@ void UI_InitSetupVariable(void)
 	AngChk.gapBk = Setup3.amp.gapBk;
 	AngChk.upOffset = Setup3.amp.upOffset;
 	AngChk.alpha = Setup3.amp.alpha;
-	Setup3.AngBtnStep = 5;
+	Setup3.AngBtnStep = 1;//5; //pjg<>200902 by ask park su hyun
 	Setup3.AutoAngValue = 5;
 	Setup3.amSens = 2; //pjg++191217
     //Setup2.language = LT_ENG;
@@ -5794,7 +5794,7 @@ void UI_SystemInit_Timer(uint16_t nIDEvent)
 				AngChk.upOffset = Setup3.amp.upOffset;
 				
 				Setup3.AngBtnStep = fssi->setup3.AngBtnStep;
-				if (Setup3.AngBtnStep > 100) Setup3.AngBtnStep = 5;
+				if (Setup3.AngBtnStep > 100) Setup3.AngBtnStep = 1;//5; //pjg<>200902 by ask park su hyun
 				Setup3.writeTime = fssi->setup3.writeTime;
 				if (Setup3.writeTime > 100100) Setup3.writeTime = 0;
 			}
@@ -18410,7 +18410,25 @@ void UI_PopupSaving_Process(void)
 			}
 			Option.usbcopypos = j;
 		}
-		
+
+		//05,140deg disp error bug fix
+		SAVE_EXERCISE_INFO_V2 *ptr;
+		ptr = (SAVE_EXERCISE_INFO_V2 *)CommonBuf;
+		#if 1
+		#else
+		for (i = 0; i < size/sizeof(SAVE_EXERCISE_INFO_V2); i++) {
+			if (ptr[i].flg == 0) {
+				if (ptr[i].spm.exangle >= 0 && ptr[i].spm.exangle < 5) ptr[i].spm.exangle += 30; 
+				if (ptr[i].spm.flangle >= 140 && ptr[i].spm.flangle <= 145) ptr[i].spm.flangle += 70; 
+			}
+			else {
+				for (j = 0; j < 3; j++) {
+					if (ptr[i].smm.mi[j].exangle >= 0 && ptr[i].smm.mi[j].exangle < 5) ptr[i].smm.mi[j].exangle += 30; 
+					if (ptr[i].smm.mi[j].flangle >= 140 && ptr[i].smm.mi[j].flangle <= 145) ptr[i].smm.mi[j].flangle += 70; 
+				}
+			}
+		}
+		#endif
 		//data encrption
 		//for (i = 0; i < size; i++) CommonBuf[i] ^= key;
 		if (!USBDisk_Write((uint8_t *)CommonBuf, size)) {
@@ -21476,19 +21494,19 @@ void UI_AutoAngleValue_OnBnClickedBtnAavUp(void)
 	if (Setup2.language == LT_CHINA) pos = 148;
 	else pos = 158;
 
-	if(Setup3.AngBtnStep < 10) Setup3.AngBtnStep++;
-	if(Setup3.AngBtnStep == 10)
+	if(Setup3.AutoAngValue < 10) Setup3.AutoAngValue++;
+	if(Setup3.AutoAngValue == 10)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,286,102\r");
 		App_SetButtonOption(RID_LP_BTN_PAUSEP, BN_DISABLE);
 	}
-	if(Setup3.AngBtnStep  > 0)
+	if(Setup3.AutoAngValue  > 0)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i minus.bmp,345,102\r");
 		App_SetButtonOption(RID_LP_BTN_PAUSEM, BN_PUSHED);
 	}
 
-	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, pos,113,Setup3.AngBtnStep,1);
+	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, pos,113,Setup3.AutoAngValue,1);
 }
 
 void UI_AutoAngleValue_OnBnClickedBtnAavDown(void)
@@ -21498,19 +21516,19 @@ void UI_AutoAngleValue_OnBnClickedBtnAavDown(void)
 	if (Setup2.language == LT_CHINA) pos = 148;
 	else pos = 158;
 
-	if(Setup3.AngBtnStep > 1) Setup3.AngBtnStep--;
-	if(Setup3.AngBtnStep == 1)
+	if(Setup3.AutoAngValue > 1) Setup3.AutoAngValue--;
+	if(Setup3.AutoAngValue == 1)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,345,102\r");
 		App_SetButtonOption(RID_LP_BTN_PAUSEM, BN_DISABLE);
 	}
-	if(Setup3.AngBtnStep < 10)
+	if(Setup3.AutoAngValue < 10)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i plus.bmp,286,102\r");
 		App_SetButtonOption(RID_LP_BTN_PAUSEP, BN_PUSHED);
 	}
 	
-	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, pos,113,Setup3.AngBtnStep,2);
+	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, pos,113,Setup3.AutoAngValue,2);
 }
 
 void UI_AutoAngleValue_Init(void)
@@ -21551,7 +21569,7 @@ void UI_AutoAngleValue_Init(void)
 
 	//if (loginInfo.type == LIT_USER) UI_LoadPIFromEEPROM(PInfoWnd2.id, (uint8_t *)CommonBuf);
 
-	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, pos,113,Setup3.AngBtnStep,1);
+	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, pos,113,Setup3.AutoAngValue,1);
 	
 }
 
