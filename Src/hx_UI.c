@@ -58,7 +58,7 @@ source
 #define DISP_NUM_BUF_SIZE			17		// "i 0.bmp,123,456\r"
 #define DISP_BLANK_NUM_BUF_SIZE		20		// "i bnk.bmp,123,456\r"
 #define DISP_BLANK_ALL_NUM_BUF_SIZE	20	// "i bnk2.bmp,123,456\r"
-#define DISP_NUM_PLACE_VALUE		3		// 3 place
+#define DISP_NUM_PLACE_VALUE		4		// 3 place //bgryu210106 --> 4 place
 #define DISP_NUM_DISP_SAME_TIME		(DISP_NUM_PLACE_VALUE*8)
 #define DISP_NUM_SBUF_SIZE			18		// "i 50.bmp,123,456\r"
 #define DISP_BLANK_NUM_SBUF_SIZE	20		// "i 5bnk.bmp,123,456\r"
@@ -116,31 +116,31 @@ source
 #define EXERCISE_INFO_NUM			10//375//480//(480:1.6month, 85 person, 256Kbyte memory)2//0
 
 #define RUN_ANGLE_MAX				140
-#define RUN_ANGLE_MIN				-5  //201026bg
+#define RUN_ANGLE_MIN				-13  //201026bg
 #define ANGLE_MOVE_GAP				5
-#define ANGLE_MIN_GAP				15
+#define ANGLE_MIN_GAP				5
 #define ANGLE_MIN_DEG				5
-#define SAVE_OFFSET_VALUE			5
-#define RUN_MIN_EXE_ANGLE			25
+#define SAVE_OFFSET_VALUE			2
+#define RUN_MIN_EXE_ANGLE			5
 
 #define LOGIN_GUEST_PWD_LEN			4
 #define LOGIN_USER_PWD_LEN			4
 #define LOGIN_ADMIN_PWD_LEN			5
 
 #define USE_FUN_ANGLE_AUTO_CHECK	//pjg++190805
-#define STANDBY_CHK_CURRENT			940 //Motor_OverCurTbl[SL_LEVEL1][MS_SPEED3]
+#define STANDBY_CHK_CURRENT			1200 //Motor_OverCurTbl[SL_LEVEL1][MS_SPEED3]
 #define STANDBY_SENS_CURRENT		Motor_OverCurTbl[SL_LEVEL2][MS_SPEED3]
-#define RUN_CHK_OVERCURRENT			1250 //1000
+#define RUN_CHK_OVERCURRENT			2000 //1000
 #define RUN_CHK_MINCURRENT			300
 #define USE_FUN_EEPROM_DISK		//pjg++190805
-#define UI_WND_DEPTH				3
+#define UI_WND_DEPTH				1
 //
 #define ANG_CHK_ANGLE_MAX			135
 #define ANG_CHK_ANGLE_MIN			0
-#define ANG_MEA_TOTAL_COUNT			3
-#define ANG_MEA_MAX_SENS_VALUE		9
-#define ANG_MEA_MAX_SENS_STEP		3
-#define ANG_MEA_NO_GRAVITY_ANGLE		100
+#define ANG_MEA_TOTAL_COUNT			1
+#define ANG_MEA_MAX_SENS_VALUE		1
+#define ANG_MEA_MAX_SENS_STEP		1
+#define ANG_MEA_NO_GRAVITY_ANGLE		10
 #define USE_ANG_MEA_METHOD_TYPE1		//pjg++191106 : when down - add offset at 110 deg over, when up - add offset all deg
 //#define USE_ANG_MEA_METHOD_TYPE2		//pjg++191106 : when down - add offset at 110 deg over, when up - add offset all deg
 //#define USE_MOTOR_RUN_TEST			
@@ -3350,22 +3350,24 @@ void UI_DisplayDecimal_5Unit(char font, uint8_t pos, int x, int y, short num)
 		temp3 = num%1000;
 		temp = temp3%100;
 		temp2 = temp%10;
-		//UI_DisplayNumber(font, x, y, 10, pos+4);
 		if (dispNum.preUnitNum[pos] != 4) {
 			UI_DisplayClearNumber(font, x, y, pos);
 			dispNum.preUnitNum[pos] = 4;
 		}
+
+		UI_DisplayNumber(font, x, y, num/1000, pos+3);
+		
 		if (font == UI_DISP_NUM_FNT5) {
-			UI_DisplayNumber(font, x+DISP_NUM_5R_5P_1000_POS, y, num/1000, pos+3);
-			UI_DisplayNumber(font, x+DISP_NUM_5R_5P_100_POS, y, temp3/100, pos+2);
-			UI_DisplayNumber(font, x+DISP_NUM_5R_5P_10_POS, y, temp/10, pos+1);
-			UI_DisplayNumber(font, x+DISP_NUM_5R_5P_1_POS, y, temp2, pos+0);
+			//UI_DisplayNumber(font, x+DISP_NUM_5R_5P_1000_POS, y, num/1000, pos+3);
+			UI_DisplayNumber(font, x+DISP_NUM_5R_5P_1000_POS, y, temp3/100, pos+2);
+			UI_DisplayNumber(font, x+DISP_NUM_5R_5P_100_POS, y, temp/10, pos+1);
+			UI_DisplayNumber(font, x+DISP_NUM_5R_5P_10_POS, y, temp2, pos+0);
 		}
 		else {
-			UI_DisplayNumber(font, x+DISP_NUM_5U_4PS_1000, y, num/1000, pos+3);
-			UI_DisplayNumber(font, x+DISP_NUM_5U_4PS_100, y, temp3/100, pos+2);
-			UI_DisplayNumber(font, x+DISP_NUM_5U_4PS_10, y, temp/10, pos+1);
-			UI_DisplayNumber(font, x+DISP_NUM_5U_4PS_1, y, temp2, pos+0);
+			//UI_DisplayNumber(font, x+DISP_NUM_5U_4PS_1000, y, num/1000, pos+3);
+			UI_DisplayNumber(font, x+DISP_NUM_5R_9P_100_POS, y, temp3/100, pos+2);
+			UI_DisplayNumber(font, x+DISP_NUM_5R_9P_10_POS, y, temp/10, pos+1);
+			UI_DisplayNumber(font, x+DISP_NUM_5R_9P_1_POS, y, temp2, pos+0);
 		}
 	}
 	else if (num < -99) {
@@ -3524,7 +3526,6 @@ void UI_InitSetupVariable(void)    //시스템 초기화 시에 1번 하며  EEPROM 에서 불
 	Setup2.vol = 4;		// 4 max
 	Setup2.bright = 4;		// 4 max		
 	Setup2.quick = 0; //201109bg
-
 	SpdTmWnd.speed = MS_SPEED4;
 	SpdTmWnd.time = 30;
 
@@ -4970,8 +4971,16 @@ void UI_Product_OnBnClickedBtnBack(void)
 	UI_SystemInit_Create();
 }
 
-void UI_Product_OnBnClickedBtnAngChkChange(void)
+void UI_Product_OnBnClickedBtnEndurTest(void)
 {
+
+
+
+
+
+
+
+
 }
 
 void UI_Product_OnBnClickedBtnEEPROMFormat(void)
@@ -5062,7 +5071,7 @@ LRESULT UI_Product_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		case RID_PROD_BTN_ANGCHK:
 			switch(lParam) {
 			case BN_CLICKED: // push 
-				//UI_Product_OnBnClickedBtnBack();
+				UI_Product_OnBnClickedBtnEndurTest();    // eudurance test  bg201202
 				break;
 			}
 			return 0;										 
@@ -5079,7 +5088,7 @@ LRESULT UI_Product_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		TLCD_DrawPicture((char *)lParam);
 		break;
 	case WM_TIMER:
-		//UI_Timer(wParam);
+//		UI_Product_Timer(wParam);  // bg201202
 		break;
 	case WM_SOUND:
 		if (wParam == 0) 	TLCD_SoundOut(pSndInfo[lParam][Setup2.language]);
@@ -6190,6 +6199,8 @@ void UI_Loading_Timer(uint16_t nIDEvent)
 		}
 	}
 	//over current
+	
+	
 	MotorDrv_CheckOverCurrent();
 	if (MotorDrv_IsOverCurrent()) {
 		MotorDrv_StopHome();
@@ -6207,7 +6218,9 @@ void UI_Loading_Timer(uint16_t nIDEvent)
 		API_SetErrorCode(EC_HOMEIN, EDT_DISP_HALT);
 		return;
 	}
-	*/
+	
+
+*/
 	if (MotorDrv_GetFlagHomeIn()) 
 	{
 		MotorDrv_SetTargetPosition(Setup3.IPos);
@@ -6233,6 +6246,7 @@ void UI_Loading_Timer(uint16_t nIDEvent)
 		
 		return;
 	}
+	
 
 	Timer_sec = 0;
 	UI_AniProgress(loading);
@@ -6356,8 +6370,10 @@ void UI_Loading_Init(void)
 	App_SetUIProcess(UI_Loading_Process);
 	loading = 0;
 	UI_Time.tmp_sec = 0;//70;//limit s/w search time
+        
+        
 	if (MotorDrv_GetLimitSwitchStatus() == 1) {
-		MotorDrv_SetMotorState(MOTOR_CW);
+	   	MotorDrv_SetMotorState(MOTOR_CW);
 		MotorDrv_SetDirection(MDD_CW);
 	}
 	else {
@@ -6366,8 +6382,10 @@ void UI_Loading_Init(void)
 	}
 	MotorDrv_SetFlagLimitSW(0);
 	MotorDrv_GoHome();
+	
 	RunWnd.play = UI_RUN_MODE_LOAD;
 	Option.temp16 = 0;
+        
 }
 
 LRESULT UI_Loading_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -6446,7 +6464,7 @@ void UI_User_OnBnClickedBtnGuest(void)
 		UI_InitVariable();
 #ifdef USE_QC_LIFE_TEST_SAVE_CUR
 		SpdTmWnd.time = 9999;//8*60;
-		AngleWnd.flAngle = 140;
+		AngleWnd.flAngle = 40;
 #endif
 		//PInfoWnd2.pi.totalTime = totalTimeBk;
 		//PInfoWnd2.pi.totalRepeat = totalRepeatBk;
@@ -7702,13 +7720,15 @@ void UI_SpeedTime_Init(void)
 	FullInfo.type = FT_RUN;
 
 	//if (loginInfo.type == LIT_USER) UI_LoadPIFromEEPROM(PInfoWnd2.id, (uint8_t *)CommonBuf);
-	
-	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE, pos,94, SpdTmWnd.speed,1);
 	#ifdef USE_QC_LIFE_TEST_SAVE_CUR
+	SpdTmWnd.speed = MS_SPEED_MAX;
 	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 355, 94, SpdTmWnd.time,4);
 	#else
 	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 355, 94, SpdTmWnd.time,2);
 	#endif
+
+	
+	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE, pos,94, SpdTmWnd.speed,1);
 
 	UI_PINumber_Display();
 	
@@ -8176,8 +8196,10 @@ void UI_Run_DisplayValue(void)
 {
 	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_3PLACE, 30,160, RunWnd.angle, 3);
 	UI_DisplayDecimal_5Unit(UI_DISP_NUM_FNT9, UI_DISP_NUM_4PLACE, 372,85, RunWnd.repeat);
+
 #ifdef USE_QC_LIFE_TEST_SAVE_CUR
 	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_5PLACE, 370,160, RunWnd.time, 4);
+	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_6PLACE, 300,30, MDrvInfo.current, 4);
 #else
 	 UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_5PLACE, 370,160, RunWnd.time, 3);
 #endif
@@ -8334,7 +8356,7 @@ void UI_Run_Timer(uint16_t nIDEvent)
 						Timer_sec = 0;
 						#ifdef USE_QC_LIFE_TEST_SAVE_CUR
 						loading++;
-						if (loading >= 60) {
+						if (loading >= 7200) {   //  시험 테스트시에 시간 정해두는 곳 
 							loading = 0;
 							QCLife.fStart = 0;
 							QCLife.fSave = 0;
@@ -8851,12 +8873,15 @@ void UI_Run_NormalMode(void)
 	
 	//if (!UI_CheckMotorStatus()) return;
 	
+	//bg 201202
+	/*
 	if (MotorDrv_GetFlagLimitSW()) {
 		MotorDrv_Stop();
 		UI_SetFunRunMode(UI_FRM_NONE);
 		API_SetErrorCode(EC_OVER_RANGE, EDT_DISP_HALT);
 		return;
 	}
+	*/
 
 	UI_CheckCurrentSensitivity();
 	if (MotorDrv_GetDirection() == MDD_CCW) {
@@ -8868,9 +8893,11 @@ void UI_Run_NormalMode(void)
 				UI_Time.tmp4_ms = 200;
 			}
 			if (!UI_Time.tmp4_ms) {
+				RunWnd.repeat++;
 				MotorDrv_SetDirection(MDD_CW);
 				MotorDrv_SetFlagRunOne(0);
 				MotorDrv_MoveUp();
+				
 			}
 			//MotorDrv_SetTargetPosition(AngleWnd.exAngle-2);
 		}
@@ -8892,7 +8919,7 @@ void UI_Run_NormalMode(void)
 				MotorDrv_SetDirection(MDD_CCW);
 				MotorDrv_SetFlagRunOne(0);
 				MotorDrv_MoveDown();
-				RunWnd.repeat++;
+				
 				PInfoWnd2.pi.totalRepeat++; //pjg++180316
 			}
 			//MotorDrv_SetTargetPosition(AngleWnd.flAngle+2);
@@ -8973,14 +9000,20 @@ void UI_Run_ProgressMode(void)
 		if (Setup3.LPChk) UI_Run_LimitedPauseMode();
 		else UI_Run_NormalMode();
 	}
+
 	else {
 		//if (!UI_CheckMotorStatus()) return;
+
+              //bg 201202  
+		/*
 		if (MotorDrv_GetFlagLimitSW()) {
 			MotorDrv_Stop();
 			UI_SetFunRunMode(UI_FRM_NONE);
 			API_SetErrorCode(EC_OVER_RANGE, EDT_DISP_HALT);
 			return;
 		}
+		*/
+
 		UI_CheckCurrentSensitivity();
 
 		if (MotorDrv_GetDirection() == MDD_CCW) {
@@ -9339,7 +9372,7 @@ void UI_SetFunRunMode(uint8_t mode)
 #ifdef USE_QC_LIFE_TEST_SAVE_CUR
 void UI_Run_QCLifeTest_SaveCurAtDeg(void)
 {
-	if (MotorDrv_GetPosition() == 0) {
+	if (MotorDrv_GetPosition() == 30 && MotorDrv_GetDirection() == MDD_CW ) {
 		QCLife.fStart = 1;
 	}
 
@@ -9356,130 +9389,134 @@ void UI_Run_QCLifeTest_SaveCurAtDeg(void)
 	if (QCLife.fStart == 0) return;
 	if (QCLife.fSave == 1) return;
 
-	if (MotorDrv_GetPosition() == 1) {
-		if (QCLife.curBuf[0] == 0) {
+	if (MotorDrv_GetPosition() == 30 ) {
+		if (MotorDrv_GetDirection() == MDD_CW) {
 			QCLife.curBuf[0] = Product_Calib.oldCurrent;
 		}
-		else if (QCLife.curBuf[28] == 0 && MotorDrv_GetDirection() == MDD_CW) {
+		else if (MotorDrv_GetDirection() == MDD_CCW) {
 			QCLife.curBuf[28] = Product_Calib.oldCurrent;
+
 			if (QCLife.fSave == 0) {
 				QCLife.fSave = 1;
+				MotorDrv_Pause();
 				UI_Run_SaveCurrent();
+				MotorDrv_Run();
 			}
+
 		}
 	}
-	else if (MotorDrv_GetPosition() == 10) {
-		if (QCLife.curBuf[1] == 0) {
+	else if (MotorDrv_GetPosition() == -1) {
+		if (MotorDrv_GetDirection() == MDD_CW) {
 			QCLife.curBuf[1] = Product_Calib.oldCurrent;
 		}
-		else if (QCLife.curBuf[28-1] == 0 && MotorDrv_GetDirection() == MDD_CW) {
+		else if (MotorDrv_GetDirection() == MDD_CCW) {
 			QCLife.curBuf[28-1] = Product_Calib.oldCurrent;
 		}
 	}
-	else if (MotorDrv_GetPosition() == 20) {
-		if (QCLife.curBuf[2] == 0) {
+	else if (MotorDrv_GetPosition() == -2) {
+		if (MotorDrv_GetDirection() == MDD_CW) {
 			QCLife.curBuf[2] = Product_Calib.oldCurrent;
 		}
-		else if (QCLife.curBuf[28-2] == 0 && MotorDrv_GetDirection() == MDD_CW) {
+		else if (MotorDrv_GetDirection() == MDD_CCW) {
 			QCLife.curBuf[28-2] = Product_Calib.oldCurrent;
 		}
 	}
-	else if (MotorDrv_GetPosition() == 30) {
-		if (QCLife.curBuf[3] == 0) {
+	else if (MotorDrv_GetPosition() == -3) {
+		if (MotorDrv_GetDirection() == MDD_CW) {
 			QCLife.curBuf[3] = Product_Calib.oldCurrent;
 		}
-		else if (QCLife.curBuf[28-3] == 0 && MotorDrv_GetDirection() == MDD_CW) {
+		else if (MotorDrv_GetDirection() == MDD_CCW) {
 			QCLife.curBuf[28-3] = Product_Calib.oldCurrent;
 		}
 	}
-	else if (MotorDrv_GetPosition() == 40) {
-		if (QCLife.curBuf[4] == 0) {
+	else if (MotorDrv_GetPosition() == -4) {
+		if (MotorDrv_GetDirection() == MDD_CW) {
 			QCLife.curBuf[4] = Product_Calib.oldCurrent;
 		}
-		else if (QCLife.curBuf[28-4] == 0 && MotorDrv_GetDirection() == MDD_CW) {
+		else if (MotorDrv_GetDirection() == MDD_CCW) {
 			QCLife.curBuf[28-4] = Product_Calib.oldCurrent;
 		}
 	}
-	else if (MotorDrv_GetPosition() == 50) {
-		if (QCLife.curBuf[5] == 0) {
+	else if (MotorDrv_GetPosition() == -5) {
+		if (MotorDrv_GetDirection() == MDD_CW) {
 			QCLife.curBuf[5] = Product_Calib.oldCurrent;
 		}
-		else if (QCLife.curBuf[28-5] == 0 && MotorDrv_GetDirection() == MDD_CW) {
+		else if (MotorDrv_GetDirection() == MDD_CCW) {
 			QCLife.curBuf[28-5] = Product_Calib.oldCurrent;
 		}
 	}
-	else if (MotorDrv_GetPosition() == 60) {
-		if (QCLife.curBuf[6] == 0) {
+	else if (MotorDrv_GetPosition() == -6) {
+		if (MotorDrv_GetDirection() == MDD_CW) {
 			QCLife.curBuf[6] = Product_Calib.oldCurrent;
 		}
-		else if (QCLife.curBuf[28-6] == 0 && MotorDrv_GetDirection() == MDD_CW) {
+		else if (MotorDrv_GetDirection() == MDD_CCW) {
 			QCLife.curBuf[28-6] = Product_Calib.oldCurrent;
 		}
 	}
-	else if (MotorDrv_GetPosition() == 70) {
-		if (QCLife.curBuf[7] == 0) {
+	else if (MotorDrv_GetPosition() == -7) {
+		if (MotorDrv_GetDirection() == MDD_CW) {
 			QCLife.curBuf[7] = Product_Calib.oldCurrent;
 		}
-		else if (QCLife.curBuf[28-7] == 0 && MotorDrv_GetDirection() == MDD_CW) {
+		else if (MotorDrv_GetDirection() == MDD_CCW) {
 			QCLife.curBuf[28-7] = Product_Calib.oldCurrent;
 		}
 	}
-	else if (MotorDrv_GetPosition() == 80) {
-		if (QCLife.curBuf[8] == 0) {
+	else if (MotorDrv_GetPosition() == -8) {
+		if (MotorDrv_GetDirection() == MDD_CW) {
 			QCLife.curBuf[8] = Product_Calib.oldCurrent;
 		}
-		else if (QCLife.curBuf[28-8] == 0 && MotorDrv_GetDirection() == MDD_CW) {
+		else if (MotorDrv_GetDirection() == MDD_CCW) {
 			QCLife.curBuf[28-8] = Product_Calib.oldCurrent;
 		}
 	}
-	else if (MotorDrv_GetPosition() == 90) {
-		if (QCLife.curBuf[9] == 0) {
+	else if (MotorDrv_GetPosition() == -9) {
+		if (MotorDrv_GetDirection() == MDD_CW) {
 			QCLife.curBuf[9] = Product_Calib.oldCurrent;
 		}
-		else if (QCLife.curBuf[28-9] == 0 && MotorDrv_GetDirection() == MDD_CW) {
+		else if (MotorDrv_GetDirection() == MDD_CCW) {
 			QCLife.curBuf[28-9] = Product_Calib.oldCurrent;
 		}
 	}
-	else if (MotorDrv_GetPosition() == 100) {
-		if (QCLife.curBuf[10] == 0) {
+	else if (MotorDrv_GetPosition() == -10) {
+		if (MotorDrv_GetDirection() == MDD_CW) {
 			QCLife.curBuf[10] = Product_Calib.oldCurrent;
 		}
-		else if (QCLife.curBuf[28-10] == 0 && MotorDrv_GetDirection() == MDD_CW) {
+		else if (MotorDrv_GetDirection() == MDD_CCW) {
 			QCLife.curBuf[28-10] = Product_Calib.oldCurrent;
 		}
 	}
-	else if (MotorDrv_GetPosition() == 110) {
-		if (QCLife.curBuf[11] == 0) {
+	else if (MotorDrv_GetPosition() == -11) {
+		if (MotorDrv_GetDirection() == MDD_CW) {
 			QCLife.curBuf[11] = Product_Calib.oldCurrent;
 		}
-		else if (QCLife.curBuf[28-11] == 0 && MotorDrv_GetDirection() == MDD_CW) {
+		else if (MotorDrv_GetDirection() == MDD_CCW) {
 			QCLife.curBuf[28-11] = Product_Calib.oldCurrent;
 		}
 	}
-	else if (MotorDrv_GetPosition() == 120) {
-		if (QCLife.curBuf[12] == 0) {
+	else if (MotorDrv_GetPosition() == -12) {
+		if (MotorDrv_GetDirection() == MDD_CW) {
 			QCLife.curBuf[12] = Product_Calib.oldCurrent;
 		}
-		else if (QCLife.curBuf[28-12] == 0 && MotorDrv_GetDirection() == MDD_CW) {
+		else if (MotorDrv_GetDirection() == MDD_CCW) {
 			QCLife.curBuf[28-12] = Product_Calib.oldCurrent;
 		}
 	}
-	else if (MotorDrv_GetPosition() == 130) {
-		if (QCLife.curBuf[13] == 0) {
+	else if (MotorDrv_GetPosition() == -13) {
+		if (MotorDrv_GetDirection() == MDD_CW) {
 			QCLife.curBuf[13] = Product_Calib.oldCurrent;
 		}
-		else if (QCLife.curBuf[28-13] == 0 && MotorDrv_GetDirection() == MDD_CW) {
+		else if (MotorDrv_GetDirection() == MDD_CCW) {
 			QCLife.curBuf[28-13] = Product_Calib.oldCurrent;
 		}
 	}
-	else if (MotorDrv_GetPosition() == 139) {
-		if (QCLife.curBuf[14] == 0) {
+	else if (MotorDrv_GetPosition() == -14) {
 			QCLife.curBuf[14] = Product_Calib.oldCurrent;
-		}
+	}
+
 		//else if (QCLife.curBuf[28-14] == 0 && MotorDrv_GetDirection() == MDD_CW) {
 		//	QCLife.curBuf[28-14] = Product_Calib.oldCurrent;
 		//}
-	}
+	
 }
 #endif
 
@@ -9575,6 +9612,9 @@ void	UI_Run_Init(void)
 {       
 #ifdef USE_QC_LIFE_TEST_SAVE_CUR
 	int i;
+	AngleWnd.flAngle= 40;
+	AngleWnd.exAngle= -13;
+//	RunWnd.time  = 540;
 #endif
 
 	APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)DoubleBufStartCmd);
@@ -9618,6 +9658,7 @@ void	UI_Run_Init(void)
 
 	//if (loginInfo.type == LIT_USER) UI_LoadPIFromEEPROM(PInfoWnd2.id, (uint8_t *)CommonBuf);
 	//RunWnd.angle = 0; //1deg bug
+
 	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE, 6,87, AngleWnd.exAngle,3);
 	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 71,87, AngleWnd.flAngle,3);
 	APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i flxbg3.png,70,79\r");
