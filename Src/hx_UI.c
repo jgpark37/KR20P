@@ -8057,6 +8057,8 @@ void UI_Run_DisplayValue(void)
 	UI_DisplayDecimal_5Unit(UI_DISP_NUM_FNT9, UI_DISP_NUM_4PLACE, 372,85, RunWnd.repeat);
 #ifdef USE_QC_LIFE_TEST_SAVE_CUR
 	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_5PLACE, 370,160, RunWnd.time, 4);
+#else
+	 UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_5PLACE, 370,160, RunWnd.time, 3);
 #endif
 	 //구동 반복한 횟수 표현
 	//UI_DisplayDecimal(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE, 372,83, RunWnd.repeat);
