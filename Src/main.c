@@ -284,7 +284,7 @@ int main(void)
     //NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x8000);        //<- 요 부분 추가
   /* USER CODE END 1 */
   
-                                                                                                        
+
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */ 

@@ -48,7 +48,7 @@ source
 /* Private define ------------------------------------------------------------*/
 //#define USE_DEBUG_MODE
 #define USE_CALIB_ONLY_0KG					//pjg++200110
-#define USE_QC_LIFE_TEST_SAVE_CUR			//pjg++200131 : current save to usb every 60min, run time max is 999min, display usb check message
+//#define USE_QC_LIFE_TEST_SAVE_CUR			//pjg++200131 : current save to usb every 60min, run time max is 999min, display usb check message
 //
 #define PATIENT_NUM					84
 #define PATIENT_INFO_SIZE			2048	// eeprom 256KByte
@@ -3526,7 +3526,6 @@ void UI_InitSetupVariable(void)    //시스템 초기화 시에 1번 하며  EEPROM 에서 불
 	Setup2.vol = 4;		// 4 max
 	Setup2.bright = 4;		// 4 max		
 	Setup2.quick = 0; //201109bg
-
 	SpdTmWnd.speed = MS_SPEED4;
 	SpdTmWnd.time = 30;
 
@@ -8357,7 +8356,7 @@ void UI_Run_Timer(uint16_t nIDEvent)
 						Timer_sec = 0;
 						#ifdef USE_QC_LIFE_TEST_SAVE_CUR
 						loading++;
-						if (loading >= 7200) {
+						if (loading >= 7200) {   //  시험 테스트시에 시간 정해두는 곳 
 							loading = 0;
 							QCLife.fStart = 0;
 							QCLife.fSave = 0;
@@ -10585,7 +10584,7 @@ void UI_Setup_OnBnClickedBtnBRDn(void)
 void UI_Setup_OnBnClickedBtnLangKor(void)
 {	if(Setup2.language == LT_ENG)
 	{
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i ssen.bmp,243,169\r");
+		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i ssen.bmp,223,169\r");
 		App_SetButtonOption(RID_SYS_LG_ENG, BN_PUSHED);
 	}
 	else if(Setup2.language == LT_CHINA)
@@ -10601,7 +10600,7 @@ void UI_Setup_OnBnClickedBtnLangEng(void)
 {
 	if(Setup2.language == LT_KOR)
 	{
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i ssko.bmp,136,169\r");
+		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i ssko.bmp,126,169\r");
 		App_SetButtonOption(RID_SYS_LG_KOR, BN_PUSHED);
 	}
 	else if(Setup2.language == LT_CHINA)
@@ -10617,12 +10616,12 @@ void UI_Setup_OnBnClickedBtnLangChi(void)
 {
 	if(Setup2.language == LT_KOR)
 	{
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i ssko.bmp,136,169\r");
+		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i ssko.bmp,126,169\r");
 		App_SetButtonOption(RID_SYS_LG_KOR, BN_PUSHED);
 	}
 	else if(Setup2.language == LT_ENG)
 	{
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i ssen.bmp,233,169\r");
+		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i ssen.bmp,223,169\r");
 		App_SetButtonOption(RID_SYS_LG_ENG, BN_PUSHED);
 	}
 	Setup2.language = LT_CHINA;
@@ -10646,12 +10645,12 @@ void UI_Setup_OnBnClickedBtnQuick(void)
 
 	if(Setup2.quick== 0)
 	{
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nbrchk.bmp,356,169\r");
+		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nbrchk.bmp,420,180\r");
 		
 	}
 	else if(Setup2.quick== 1)
 	{
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i brchk.bmp,356,169\r");
+		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i brchk.bmp,420,180\r");
 		
 	}
 	
@@ -10768,10 +10767,15 @@ void UI_Setup_Init(void)
 			GetNumFromString(pBtnInfo[RID_SYS_QCK*2], ',', 1),
 			GetNumFromString(pBtnInfo[RID_SYS_QCK*2], ',', 2),
 			93, 44, hParent, RID_SYS_QCK, 0);
+
+	
+
 	//API_CreateWindow("", pBtnInfo[RID_SYS_LG_CHI*2], BS_PUSHBUTTON, 
 	//		GetNumFromString(pBtnInfo[RID_SYS_LG_CHI*2], ',', 1),
 	//		GetNumFromString(pBtnInfo[RID_SYS_LG_CHI*2], ',', 2),
 	//		93, 44, hParent, RID_SYS_LG_CHI, 0);
+
+
 
 	UI_LED_Control(LM_STAND_BY);
 
@@ -10794,18 +10798,18 @@ void UI_Setup_Init(void)
 	//}
 	else
 	{
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nssen.bmp,233,169\r");
+		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nssen.bmp,223,169\r");
 		App_SetButtonOption(RID_SYS_LG_ENG, BN_DISABLE);
 	}
 
 		if(Setup2.quick == 0)
 	{
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nbrchk.bmp,356,169\r");
+		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nbrchk.bmp,420,180\r");
 	}
 
 	else
 	{
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i brchk.bmp,356,169\r");
+		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i brchk.bmp,420,180\r");
 	
 	}
 	/*if (Setup2.sndGuid2 == BST_CHECKED) {
@@ -10873,6 +10877,8 @@ void UI_Setup_Init(void)
 		App_SetButtonOption(RID_SYS_BR_DN, BN_DISABLE);
 	}
 	APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)DoubleBufEndCmd);
+	uart_putstring("f Quick,330,180\n");
+	uart_putstring("RR 321,170,150,45,8,0,0,0,0\r");
 	//App_SetUIProcess(UI_Setup_Process);
 	App_SetTimer(1, 20);
 	API_KillTimer(OS_TIMER_ID_2);

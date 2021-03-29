@@ -167,10 +167,10 @@ char *pBtnInfo[] = {
 	//"i nbrchk.bmp,108,68\r",	"i brchk.bmp,108,68\r",
 	"i pbr.bmp,428,60\r",		"i pbrp.bmp,428,60\r",
 	"i mbr.bmp,102,60\r",		"i mbrp.bmp,102,60\r",
-	"i ssko.bmp,136,169\r",		"i pssko.bmp,136,169\r", //kor
-	"i ssen.bmp,233,169\r",		"i pssen.bmp,233,169\r", //eng
+	"i ssko.bmp,126,169\r",		"i pssko.bmp,126,169\r", //kor
+	"i ssen.bmp,223,169\r",		"i pssen.bmp,223,169\r", //eng
 	"i ssch.bmp,379,169\r",		"i pssch.bmp,379,169\r", //china
-	"i nbrchk.bmp,356,169\r",		"i nbrchk.bmp,356,169\r",  //quick
+	"i nbrchk.bmp,420,180\r",		"i nbrchk.bmp,420,180\r",  //quick
 	//PiLoad
 	"i left.bmp,44,222\r",		"i leftp.bmp,44,222\r",
 	"i pidel.bmp,397,2\r",    	"i ppidel.bmp,397,2\r",
