@@ -50,6 +50,15 @@ source
 
 #define MDRV_TIMER_MAX_NUM						2
 #define MDrV_HALL_SPEED_BUF_NUM					5
+
+#define HOME_SW								HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0)
+#define MOTOR_MAX_ANGLE						142
+#define MOTOR_MIN_ANGLE						-6
+#define MOTOR_OVER_CUR_CHK_CNT				3//20//200(5sec) : 1 is 10ms
+#define MOTOR_SENS_CUR_CHK_CNT				5//100
+#define MOTOR_DRV_IC_CHK_CNT				100//5000 //10ms unit
+#define MOTOR_DRV_PWM_VALUE_MAX				20000
+
 //
 
 /* Private typedef -----------------------------------------------------------*/
@@ -202,6 +211,7 @@ extern void MotorDrv_SetFlagRunOne(uint8_t value);
 extern uint8_t MotorDrv_GetFlagRunOne(void);
 extern void MotorDrv_CheckOverCurrent(void);
 extern int32_t MotorDrv_GetEncoderVaue(void);
+extern void MotorDrv_SetEncoderVaue(int32_t data);
 extern int32_t MotorDrv_GetOldEncoderValue(void);
 extern uint16_t MotorDrv_GetMotorState(void);
 extern void MotorDrv_SetMotorState(uint16_t value);

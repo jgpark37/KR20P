@@ -7,7 +7,7 @@
 *
 *                (c) Copyright 2017, Hexar Systems, Inc., Sangnok-gu, Ansan
 *
-* All rights reserved. Hexar Systems¡¯s source code is an unpublished work and the
+* All rights reserved. Hexar Systemsï¿½ï¿½s source code is an unpublished work and the
 * use of a copyright notice does not imply otherwise. This source code contains
 * confidential, trade secret material of Hexar Systems, Inc. Any attempt or participation
 * in deciphering, decoding, reverse engineering or in any way altering the 
@@ -34,13 +34,6 @@ source
 #include "main.h"
 
 /* Private define ------------------------------------------------------------*/
-#define HOME_SW						HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0)
-#define MOTOR_MAX_ANGLE						142
-#define MOTOR_MIN_ANGLE						-13//-6
-#define MOTOR_OVER_CUR_CHK_CNT				3//20//200(5sec) : 1 is 10ms
-#define MOTOR_SENS_CUR_CHK_CNT				1//4//100
-#define MOTOR_DRV_IC_CHK_CNT				100//5000 //10ms unit
-#define MOTOR_DRV_PWM_VALUE_MAX				14000//20000
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -242,7 +235,7 @@ void MotorDrv_Run(void)
 	MDrvInfo.overCurChkCnt = 0;
 }
 
-//Å¸°Ù À§Ä¡ °ªÀ» ÁÖÁö ¾ÊÀ¸¸é °°Àº ±â´ÉÀ¸·Î ´ëÃ¼
+//Å¸ï¿½ï¿½ ï¿½ï¿½Ä¡ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ã¼
 void MotorDrv_Stop(void)
 {
 	//Run_mode = 0;
@@ -287,7 +280,7 @@ void MotorDrv_StopHome(void)
 	Home_mode = 0;
 	//Home_flag = 0;
 }
-//»óÀ§´Ü¿¡¼­ Á¦¾î
+//ï¿½ï¿½ï¿½ï¿½ï¿½Ü¿ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 uint8_t MotorDrv_GetLimitSwitchStatus(void)
 {
 	int i, j;
@@ -310,13 +303,13 @@ uint8_t MotorDrv_GetLimitSwitchStatus(void)
 	return 0;
 }
 
-//È¨ÀÎ ½ºÀ§Ä¡ ÃÖÃÊ ÀÎ½Ä ÈÄ ÀÌµ¿ ½Ã°£(mS), »óÀ§´Ü¿¡¼­ Á¦¾î
+//È¨ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ä¡ ï¿½ï¿½ï¿½ï¿½ ï¿½Î½ï¿½ ï¿½ï¿½ ï¿½Ìµï¿½ ï¿½Ã°ï¿½(mS), ï¿½ï¿½ï¿½ï¿½ï¿½Ü¿ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 void MotorDrv_SetLimitSwitchMoveTime(uint32_t time)
 {
 	MDrvInfo.homeInTime = time;
 }
 
-//È¨ÀÎ ½ºÀ§Ä¡ ÃÖÃÊ ÀÎ½Ä ÆÇÁ¤ È½¼ö, »óÀ§´Ü¿¡¼­ Á¦¾î
+//È¨ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ä¡ ï¿½ï¿½ï¿½ï¿½ ï¿½Î½ï¿½ ï¿½ï¿½ï¿½ï¿½ È½ï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½ï¿½Ü¿ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 void MotorDrv_SetLimitSwitchCheckTimes(uint8_t cnt)
 {
 	MDrvInfo.homeInChkCnt = cnt;
@@ -388,7 +381,7 @@ void MotorDrv_SetPositionCheckTime(uint32_t time)
 {
 }
 
-//¸ðÅÍ °ü·Ã »óÅÂ º¯¼ö, ¸ðÅÍ´Ü¶ô, ¿ÀÇÂ, °úÀü·ù
+//ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½, ï¿½ï¿½ï¿½Í´Ü¶ï¿½, ï¿½ï¿½ï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 uint32_t MotorDrv_Status(void)
 {
 	return 1;
@@ -398,6 +391,11 @@ int32_t MotorDrv_GetEncoderVaue(void)
 {
 	//if (MDrvInfo.encoder != encoder) MDrvInfo.encoder = encoder;
 	return *MDrvInfo.encoder;//encoder;
+}
+
+void MotorDrv_SetEncoderVaue(int32_t data)
+{
+	*MDrvInfo.encoder = data;
 }
 
 void MotorDrv_SetOldEncoderValue(int32_t value)
@@ -474,7 +472,7 @@ void MotorDrv_SetFlagHomeIn(uint8_t value)
 	MDrvInfo.f.b.homeIn = value;
 }
 
-//1~5´Ü°è ¼Óµµ °íÁ¤
+//1~5ï¿½Ü°ï¿½ ï¿½Óµï¿½ ï¿½ï¿½ï¿½ï¿½
 void MotorDrv_SetSpeed(uint16_t speed)
 {
 	switch (speed) {
@@ -515,7 +513,7 @@ uint32_t MotorDrv_GetSpeed(void)
 	return *MDrvInfo.speed;
 }
 
-//À§Ä¡°ªÀÇ ºÎÈ£·Î ¼³Á¤°¡´ÉÀ¸·Î ´ëÃ¼
+//ï¿½ï¿½Ä¡ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È£ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ã¼
 void MotorDrv_SetDirection(uint8_t dir)
 {
 	MDrvInfo.f.b.dir = dir;
@@ -530,12 +528,12 @@ uint8_t MotorDrv_GetDirection(void)
 	return MDrvInfo.f.b.dir;
 }
 
-//ÆÄ¶ó¹ÌÅÍ ÃÊ±âÈ­
+//ï¿½Ä¶ï¿½ï¿½ï¿½ï¿½ ï¿½Ê±ï¿½È­
 void MotorDrv_ClearParameter(void)
 {
 }
 
-//¸ðÅÍµå¶óÀÌ¹ö ¸®¼Â
+//ï¿½ï¿½ï¿½Íµï¿½ï¿½ï¿½Ì¹ï¿½ ï¿½ï¿½ï¿½ï¿½
 void MotorDrv_DriverReset(void)
 {
 }
@@ -844,7 +842,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		//TIM7->CNT = 0;
 	}
 }
-
 
 int32_t oldEncoder;
 void MotorDrv_Thread(void)

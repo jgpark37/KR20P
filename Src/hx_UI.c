@@ -7,7 +7,7 @@
 *
 *                (c) Copyright 2017, Hexar Systems, Inc., Sangnok-gu, Ansan
 *
-* All rights reserved. Hexar Systems¡¯s source code is an unpublished work and the
+* All rights reserved. Hexar Systemsï¿½ï¿½s source code is an unpublished work and the
 * use of a copyright notice does not imply otherwise. This source code contains
 * confidential, trade secret material of Hexar Systems, Inc. Any attempt or participation
 * in deciphering, decoding, reverse engineering or in any way altering the 
@@ -49,6 +49,8 @@ source
 //#define USE_DEBUG_MODE
 #define USE_CALIB_ONLY_0KG					//pjg++200110
 //#define USE_QC_LIFE_TEST_SAVE_CUR			//pjg++200131 : current save to usb every 60min, run time max is 999min, display usb check message
+//#define USE_GET_MOTOR_FRICION
+
 //
 #define PATIENT_NUM					84
 #define PATIENT_INFO_SIZE			2048	// eeprom 256KByte
@@ -143,6 +145,8 @@ source
 #define ANG_MEA_NO_GRAVITY_ANGLE		10
 #define USE_ANG_MEA_METHOD_TYPE1		//pjg++191106 : when down - add offset at 110 deg over, when up - add offset all deg
 //#define USE_ANG_MEA_METHOD_TYPE2		//pjg++191106 : when down - add offset at 110 deg over, when up - add offset all deg
+#define USE_ANG_MEA_METHOD_TYPE3		//pjg++210324 : torque fomular method
+
 //#define USE_MOTOR_RUN_TEST			
 
 //
@@ -410,13 +414,13 @@ const uint8_t DoubleBufEndCmd[] = {"!D\r"};
 //};
 
 const uint16_t SensDefault[SL_LEVEL_MAX][MS_SPEED_MAX] = {
-		{520, 700, 850},	//20kg
+		{520, 700, 850, 850, 850},	//20kg
 		//{540, 640, 800},
-		{530, 670, 750},	//15kg
+		{530, 670, 750, 750, 750},	//15kg
 		//{440, 510, 590},
-		{470, 510, 640},	//10kg
+		{470, 510, 640, 640, 640},	//10kg
 		//{410, 470, 520},
-		{410, 440, 540}	//5kg
+		{410, 440, 540, 540, 540}		//5kg
 		//{400, 420, 420}
 };
 
@@ -477,15 +481,15 @@ struct {
 	char sblankAll_buf[DISP_NUM_SDISP_SAME_TIME][DISP_BLANK_NUM_SBUF_SIZE];
 }dispNum;
 
-struct _tagPATIENT_INFO_WND{ //È¯ÀÚÁ¤º¸ Ã¢ÀÇ º¯¼ö ÀúÀå
+struct _tagPATIENT_INFO_WND{ //È¯ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Ã¢ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 	//uint16_t id;
 	//PATIENT_INFO pi;//[PATIENT_NUM];
 	//uint16_t num;          				 //?????
 	uint16_t totalRepeat;				//?? ??????
-	uint32_t totalTime;				//?? ?????©£?
+	uint32_t totalTime;				//?? ?????ï¿½ï¿½?
 }PInfoWnd;
 
-struct _tagPATIENT_INFO_WND2{ //È¯ÀÚÁ¤º¸ Ã¢ÀÇ º¯¼ö ÀúÀå
+struct _tagPATIENT_INFO_WND2{ //È¯ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Ã¢ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 #ifdef PI_LOAD_V2
 	uint32_t id;
 #else
@@ -494,12 +498,12 @@ struct _tagPATIENT_INFO_WND2{ //È¯ÀÚÁ¤º¸ Ã¢ÀÇ º¯¼ö ÀúÀå
 	PATIENT_INFO pi;//[PATIENT_NUM];
 	//uint16_t num;          				 //?????
 	//uint16_t totalRepeat;				//?? ??????
-	//uint32_t totalTime;				//?? ?????©£?
+	//uint32_t totalTime;				//?? ?????ï¿½ï¿½?
 }PInfoWnd2;
 
 struct _LOGIN_INFO{
 	uint8_t type;	//guest, user, admin1, admin2
-	uint8_t pwdBuf[10];	//login ¾ÏÈ£
+	uint8_t pwdBuf[10];	//login ï¿½ï¿½È£
 	uint8_t cnt; //input count
 	uint8_t pwdLen;
 	uint8_t trycnt;
@@ -511,27 +515,27 @@ struct _FULL_INFO{
 	//uin8_t value;
 }FullInfo;
 
-typedef __packed struct _tagBASETUP_INFO{    //°¢µµ¼ÂÆÃ Ã¢ÀÇ º¯¼ö ÀúÀå
+typedef __packed struct _tagBASETUP_INFO{    //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Ã¢ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 	short exAngle, flAngle;					//Extension(????) ????(flection) 
-	//char mode;  //½ÅÀü°ú ±¼°î ¸ðµå ÀúÀå
+	//char mode;  //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 }BASETUP_INFO;
 BASETUP_INFO AngleWnd, AngleWndOld;
 
-typedef __packed struct _tagBASETUP2_INFO{    //¼Óµµ/½Ã°£ ¼ÂÆÃ Ã¢ÀÇ º¯¼ö ÀúÀå
-	uint16_t speed;     //¼Óµµ //smart use
-	uint16_t time;      //½Ã°£ //smart use
+typedef __packed struct _tagBASETUP2_INFO{    //ï¿½Óµï¿½/ï¿½Ã°ï¿½ ï¿½ï¿½ï¿½ï¿½ Ã¢ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+	uint16_t speed;     //ï¿½Óµï¿½ //smart use
+	uint16_t time;      //ï¿½Ã°ï¿½ //smart use
 }BASETUP2_INFO;
 BASETUP2_INFO SpdTmWnd, SpdTmWndOld;
 
-uint16_t SpdTmWnd_bk_speed; //pjg++170530 ÀÓ½Ã·Î ¸¸µë.¼Óµµ°¡ 1ÀÎ°æ¿ì ³Ê¹« ´Ê¾î¼­ ÀÓ½ÃÀûÀ¸·Î Àû¿ë
+uint16_t SpdTmWnd_bk_speed; //pjg++170530 ï¿½Ó½Ã·ï¿½ ï¿½ï¿½ï¿½ï¿½.ï¿½Óµï¿½ï¿½ï¿½ 1ï¿½Î°ï¿½ï¿½ ï¿½Ê¹ï¿½ ï¿½Ê¾î¼­ ï¿½Ó½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 
-struct {    //±¸µ¿ Ã¢ÀÇ º¯¼ö ÀúÀå
-	uint8_t dir;        //¸ðÅÍ ÀÌµ¿¹æÇâ
-	uint8_t play;       //±¸µ¿ »óÅÂ(play, playing, pause, stop
-	uint16_t repeat;    //ÇöÀç ±¸µ¿ÇÑ È½¼ö
-	uint16_t tick;      //ÇöÀç ±¸µ¿ÇÏ´Â Å¸ÀÌ¸Ó º¯¼ö
-	uint32_t time;      //ÇöÀç ±¸µ¿ÇÏ´Â ½Ã°£
-	int angle;          //ÇöÀç ±¸µ¿µÇ°í ÀÖ´Â ¸ðÅÍ °¢µµ
+struct {    //ï¿½ï¿½ï¿½ï¿½ Ã¢ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+	uint8_t dir;        //ï¿½ï¿½ï¿½ï¿½ ï¿½Ìµï¿½ï¿½ï¿½ï¿½ï¿½
+	uint8_t play;       //ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½(play, playing, pause, stop
+	uint16_t repeat;    //ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ È½ï¿½ï¿½
+	uint16_t tick;      //ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½ Å¸ï¿½Ì¸ï¿½ ï¿½ï¿½ï¿½ï¿½
+	uint32_t time;      //ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½ ï¿½Ã°ï¿½
+	int angle;          //ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ç°ï¿½ ï¿½Ö´ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 	uint8_t complete;	//pjg++190908
 }RunWnd;
 
@@ -542,7 +546,7 @@ typedef struct _tag_SAVE_ANGLE_MEA_PARAM {
 	float alpha;
 }ANGLE_MEA_PARAM;			 
 
-typedef __packed struct _tagSETUP_INFO{	//?¨ú?(???)a?? ???? ????	
+typedef __packed struct _tagSETUP_INFO{	//?ï¿½ï¿½?(???)a?? ???? ????	
 	/*
 	uint8_t angle;					//??????? ????
 	uint8_t speed;					//??????? ???
@@ -812,7 +816,7 @@ struct {
 	uint8_t gapBk;
 	uint8_t upOffset; //when motor up current is big than down
 	uint8_t runOne;
-	int8_t diff;
+	int16_t diff;
 	//uint8_t newGap;
 	//short y;
 	short temp;
@@ -821,7 +825,6 @@ struct {
 	uint8_t sameCnt;
 	short angle;
 	uint8_t mode;
-    uint16_t checkCnt;
 }AngChk, *SensChk;
 #ifdef USE_FUN_REMOTE
 UI_REMOTE UI_Remote;
@@ -941,6 +944,9 @@ extern void uart_putstring3(char *pbuf);
 void UI_Remote_Init(void)
 {
 	UI_Remote.head = UI_Remote.tail = 0;
+	uart_putchar3('\r');
+	uart_putchar3('\n');
+	uart_putchar3('>');
 }
 
 void UI_Remote_PutData(uint8_t buf)
@@ -971,10 +977,15 @@ void UI_Remote_Process(void)
 	//case 'H':
 		uart_putstring3("a:alpha\r\n");
 		uart_putstring3("g:gap\r\n");
+#ifdef USE_ANG_MEA_METHOD_TYPE3
+		uart_putstring3("o:length(cm)\r\n");
+#else
 		uart_putstring3("o:up offset\r\n");
+#endif
 		uart_putstring3("c:current disp\r\n");
 		uart_putstring3("s:s-alpha\r\n");
 		uart_putstring3("d:s-gap\r\n");
+		uart_putstring3("x:exit\r\n");
 		uart_putchar3('>');
 		break;
 	case 'a':
@@ -1000,7 +1011,11 @@ void UI_Remote_Process(void)
 	case 'o':
 	//case 'O':
 		UI_Remote.cmd = 'o';
+#ifdef USE_ANG_MEA_METHOD_TYPE3
+		uart_putstring3("set length:");
+#else
 		uart_putstring3("set offset:");
+#endif
 		ConvertULong2String((int32_t)AngChk.upOffset, (uint8_t *)buf, 11);
 		uart_putstring3(buf);
 		uart_putchar3('\r');
@@ -1085,8 +1100,9 @@ void UI_Remote_Process(void)
 			uart_putchar3(' ');
 		}
 		else if (UI_Remote.cmd == 'c') {
-			if (Option.curDisp) Option.curDisp = 0;
-			else Option.curDisp = 1;
+			//if (Option.curDisp) 
+				Option.curDisp = 0;
+			//else Option.curDisp = 1;
 		}
 		else if (UI_Remote.cmd == 's') {
 			ftemp = MotorDrv_SensChk_GetAlpha();
@@ -1113,9 +1129,100 @@ void UI_Remote_Process(void)
 		uart_putchar3('\n');
 		uart_putchar3('>');	
 		break;
+	case 'x':
+		UI_Remote.cmd = 'x';
 	}
 	UI_Remote.tail++;
 	if (UI_Remote.tail >= 10) UI_Remote.tail = 0;
+}
+#endif
+
+#ifdef USE_GET_MOTOR_FRICION
+void UI_GetMotorFriction()
+{
+	uint32_t cur;
+	uint8_t buf[30];
+	
+	if (UI_Time.tmp2_ms == 0) { //run every 10ms
+		UI_Time.tmp2_ms = 10;
+	}
+	else return;
+	
+	if (AngChk.runOne == 0) {
+		AngChk.runOne++;
+		AngChk.gap = 0;
+		MotorDrv_SetSpeed(AngChk.runOne);
+		UI_Time.tmp4_ms = 60000;
+		//MotorDrv_SetEncoderVaue(0);
+		MotorDrv_SetDirection(MDD_CCW);
+		MotorDrv_SetTargetPosition(132);
+		MotorDrv_Run();
+		uart_putstring3("speed:");
+		ConvertULong2String((uint32_t)AngChk.runOne, (uint8_t *)buf, 11);
+		uart_putstring3((char *)buf);
+		uart_putchar3('\r');
+		uart_putchar3('\n');	
+		uart_putstring3("cur,	pos\r\n");
+	}
+	else {
+		//if (UI_Time.tmp4_ms == 0) {
+		if (RunWnd.angle > 130) {
+			if (AngChk.gap == 0) {
+				MotorDrv_SetDirection(MDD_CW);		
+				MotorDrv_SetTargetPosition(MOTOR_MIN_ANGLE);
+				AngChk.gap = 1;
+				//return;
+			}
+		}
+		else {
+			if (RunWnd.angle < -5 && AngChk.gap == 1) {
+				AngChk.gap = 0;
+				AngChk.runOne++;
+				if (AngChk.runOne < 6) {
+					MotorDrv_SetSpeed(AngChk.runOne);
+					//if (AngChk.runOne == 2) UI_Time.tmp4_ms = 50000;
+					//else if (AngChk.runOne == 3) UI_Time.tmp4_ms = 40000;
+					//else if (AngChk.runOne == 4) UI_Time.tmp4_ms = 30000;
+					//else if (AngChk.runOne == 5) UI_Time.tmp4_ms = 20000;
+					//UI_Time.tmp4_ms = 60000-(AngChk.runOne*5000);
+					//MotorDrv_SetEncoderVaue(0);
+					//if (AngChk.runOne%2) {
+						MotorDrv_SetDirection(MDD_CCW);		
+						MotorDrv_SetTargetPosition(MOTOR_MAX_ANGLE-1);
+					//}
+					//else {
+					//	MotorDrv_SetDirection(MDD_CCW);		
+					//	MotorDrv_SetTargetPosition(MOTOR_MIN_ANGLE+1);
+					//}
+					uart_putstring3("speed:");
+					ConvertULong2String((uint32_t)AngChk.runOne, (uint8_t *)buf, 11);
+					uart_putstring3((char *)buf);
+					uart_putchar3('\r');
+					uart_putchar3('\n');	
+					uart_putstring3("cur,   pos\r\n");
+				}
+				else {
+					MotorDrv_SetTargetPosition(MotorDrv_GetTargetPosition()+3);
+					MotorDrv_StopNoCtrl();
+					while(1);
+				}			
+			}
+		}
+	}
+
+	cur = MotorDrv_GetCurrent();
+	ConvertULong2String((uint32_t)cur, (uint8_t *)buf, 11);
+	uart_putstring3((char *)buf);
+	uart_putchar3(',');
+	ConvertULong2String((int32_t)MotorDrv_GetEncoderVaue(), (uint8_t *)buf, 11);
+	uart_putstring3((char *)buf);
+	uart_putchar3(',');
+	ConvertULong2String((uint32_t)RunWnd.angle, (uint8_t *)buf, 11);
+	uart_putstring3((char *)buf);
+	uart_putchar3(',');
+	uart_putchar3('\r');
+	uart_putchar3('\n');	
+	
 }
 #endif
 
@@ -1998,8 +2105,8 @@ int UI_SavePIToEEPROM(uint16_t id, uint8_t *buf)
 			return 0;
 		}
 	}
-	//for (i = 0; i < 100000; i++);  //¾øÀ¸¸é EEPROM ÀúÀåÀÌ ¾ÈµÊ 
-	//for (i = 0; i < 150000; i++);  //¾øÀ¸¸é EEPROM ÀúÀåÀÌ ¾ÈµÊ 
+	//for (i = 0; i < 100000; i++);  //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ EEPROM ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Èµï¿½ 
+	//for (i = 0; i < 150000; i++);  //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ EEPROM ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Èµï¿½ 
 	return 1;
 }
 
@@ -2440,7 +2547,7 @@ int UI_Exercise_SaveData(uint32_t id, uint8_t read, uint16_t p_pos)
 		if (!EEPROMDrv_WriteByte(0, posAddr+i, tmpbuf[0])) return -1;
 		//if (!EEPROMDrv_WritePage(0, posAddr, buf, sizeof(EXERCISE_INFO))) return -1;
 	}
-	//for (i = 0; i < 150000; i++);  //¾øÀ¸¸é EEPROM ÀúÀåÀÌ ¾ÈµÊ 
+	//for (i = 0; i < 150000; i++);  //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ EEPROM ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Èµï¿½ 
 
 	Exercise.addr = pos+1;
 	//save next addr
@@ -2703,7 +2810,7 @@ LRESULT UI_PopupMemoryWarning_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 		UI_PopupMemoryWarning_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		case RID_MEWR_BTN_OK:
 		case RID_MEWR_BTN_OKK:
 		case RID_MEWR_BTN_OKC:
@@ -2790,7 +2897,7 @@ LRESULT UI_PopupDataFull_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 		UI_PopupDataFull_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		case RID_FULL_BTN_YES:
 		case RID_FULL_BTN_YESK:
 		case RID_FULL_BTN_YESC:
@@ -2893,7 +3000,7 @@ LRESULT UI_PopupDataFullCheck_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 		UI_PopupDataFullCheck_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		case RID_FUCH_BTN_YES:
 		case RID_FUCH_BTN_YESK:
 		case RID_FUCH_BTN_YESC:
@@ -3064,7 +3171,7 @@ void UI_DisplayClearNumber(char font, int x, int  y, uint8_t pos)
 	}
 }
 
-// ÆùÆ®9Å©±âÀÇ ¼ýÀÚ 1ÀÚ Ç¦Çö
+// ï¿½ï¿½Æ®9Å©ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ 1ï¿½ï¿½ Ç¦ï¿½ï¿½
 // param : font - font 5 or 9
 //             x - x coordinate
 //             y - y coordinate
@@ -3125,7 +3232,7 @@ void UI_DisplayNumber(char font, int x, int  y, int num, uint8_t pos)
 		}
 	}
 }
-//¼ýÀÚ ÃÖ´ë 3ÀÚ¸® Ç¥Çö(-Æ÷ÇÔ)
+//ï¿½ï¿½ï¿½ï¿½ ï¿½Ö´ï¿½ 3ï¿½Ú¸ï¿½ Ç¥ï¿½ï¿½(-ï¿½ï¿½ï¿½ï¿½)
 void UI_DisplayDecimal(char font, uint8_t pos, int x, int y, short num)
 {
 	char temp, temp2, temp3;
@@ -3516,7 +3623,7 @@ void UI_DisplayDecimal_3UnitZero(char font, uint8_t pos, int x, int y, short num
 
 }
 
-void UI_InitSetupVariable(void)    //½Ã½ºÅÛ ÃÊ±âÈ­ ½Ã¿¡ 1¹ø ÇÏ¸ç  EEPROM ¿¡¼­ ºÒ·¯¿ÍÁö¸é Áö¿öÁü
+void UI_InitSetupVariable(void)    //ï¿½Ã½ï¿½ï¿½ï¿½ ï¿½Ê±ï¿½È­ ï¿½Ã¿ï¿½ 1ï¿½ï¿½ ï¿½Ï¸ï¿½  EEPROM ï¿½ï¿½ï¿½ï¿½ ï¿½Ò·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 {
 	const uint8_t defaultName[] = "no name ";
 	int i;
@@ -3619,21 +3726,21 @@ void UI_InitSystemVariable(void)
 	}
 }
 
-void UI_InitVariable(void) // ÇÃ·¹ÀÌ »ó¿¡ÈÆ·Ã ¿Ï·á ÈÄ ´Ù½Ã µ¹¾Æ    ¿À¸é  
+void UI_InitVariable(void) // ï¿½Ã·ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Æ·ï¿½ ï¿½Ï·ï¿½ ï¿½ï¿½ ï¿½Ù½ï¿½ ï¿½ï¿½ï¿½ï¿½    ï¿½ï¿½ï¿½ï¿½  
 {
 	//int i;
 	
-  //È¯ÀÚÁ¤º¸ Ã¢ÀÇ º¯¼ö ÃÊ±âÈ­
+  //È¯ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Ã¢ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ê±ï¿½È­
 	//PInfoWnd2.id = 1;
 	PInfoWnd2.pi.totalRepeat = 0;
 	PInfoWnd2.pi.totalTime = 0;
-    //°¢µµ¼ÂÆÃÀÇ º¯¼ö ÃÊ±âÈ­
+    //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ê±ï¿½È­
 	AngleWnd.exAngle = 0;
 	AngleWnd.flAngle = 40;
-    //¼Óµµ/½Ã°£ ¼ÂÆÃÀÇ º¯¼ö ÃÊ±âÈ­
+    //ï¿½Óµï¿½/ï¿½Ã°ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ê±ï¿½È­
 	//SpdTmWnd.speed = MS_SPEED4;
 	//SpdTmWnd.time = 30;
-    //±¸µ¿ Ã¢ÀÇ º¯¼ö ÃÊ±âÈ­
+    //ï¿½ï¿½ï¿½ï¿½ Ã¢ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ê±ï¿½È­
 	RunWnd.repeat = 0;
        Total_Counter = 0;
 	RunWnd.play = UI_RUN_MODE_STOP;
@@ -3725,7 +3832,11 @@ void UI_InitOneTime(void)
 	int i,j,k;
 
 	AngChk.gap = 2;
+	#if defined(USE_ANG_MEA_METHOD_TYPE3)
+	AngChk.upOffset = 21; //length of from motor to force input point 
+	#else
 	AngChk.upOffset = 6;//2;
+	#endif
 	AngChk.gapBk = AngChk.gap;
 	//AngChk.prev = 0;
 	AngChk.runOne = 0;
@@ -3818,17 +3929,17 @@ void UI_SetSensitivityByCalibrationValue(uint16_t  __packed value[][MS_SPEED_MAX
 				Motor_OverCurTbl[SL_LEVEL_MAX-i-1][j] = value[0][j] + (uint16_t)((float)11.333*(float)(i+1)*(float)(i+1) +
 														93.627*(float)(i+1) + -24.9);
 			}
-			else if (j == 2) {
+			else {//if (j == 2) {
 				Motor_OverCurTbl[SL_LEVEL_MAX-i-1][j] = value[0][j] + (uint16_t)((float)5.2667*(float)(i+1)*(float)(i+1) +
 														139.6*(float)(i+1) + -37.8);
 			}
-			else if (j == 3) { //¼ö½Ä º¯°æ
+			else if (j == 3) { //ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 				//Motor_OverCurTbl[SL_LEVEL_MAX-i-1][j] = value[0][j] + (uint16_t)((float)5.2667*(float)(i+1)*(float)(i+1) +
 				//						139.6*(float)(i+1) + -37.8);
 				 Motor_OverCurTbl[SL_LEVEL_MAX-i-1][j] = value[0][j]+190*i; 
 				
 			}
-			else if (j == 4) { //¼ö½Äº¯°æ
+			else if (j == 4) { //ï¿½ï¿½ï¿½Äºï¿½ï¿½ï¿½
 			
 			//	Motor_OverCurTbl[SL_LEVEL_MAX-i-1][j] = value[0][j] + (uint16_t)((float)5.2667*(float)(i+1)*(float)(i+1) +
 			//											139.6*(float)(i+1) + -37.8);
@@ -4040,7 +4151,7 @@ LRESULT UI_Pwdforget_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		UI_Pwdforget_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		case RID_PWDF_BTN_YES:
 			switch(lParam) {
 			case BN_CLICKED: // push 
@@ -4536,7 +4647,7 @@ void UI_Login_OnBnClickedBtnBackspace(void)
 		}
 	}
 	else{
-		// 1¹øÁÙ 
+		// 1ï¿½ï¿½ï¿½ï¿½ 
 		if(loginInfo.cnt == 4){
 			UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE,64,88,loginInfo.pwdBuf[2],1);
 			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i bnk.bmp,131,88\r");
@@ -4556,7 +4667,7 @@ void UI_Login_OnBnClickedBtnBackspace(void)
 			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i bnk.bmp,59,88\r");
 			loginInfo.cnt = 0;	
 		}
-		// 2¹øÁÙ 
+		// 2ï¿½ï¿½ï¿½ï¿½ 
 		else if(loginInfo.cnt == 5){
 			UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE,88,88,loginInfo.pwdBuf[3],1);
 			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i bnk.bmp,59,155\r");
@@ -4831,7 +4942,7 @@ LRESULT UI_Login_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		UI_Login_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		case RID_LOG_BTN_NUM:
 			switch(lParam) {
 			case BN_CLICKED: // push
@@ -5047,7 +5158,7 @@ LRESULT UI_Product_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		UI_Product_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		case RID_PROD_BTN_CALI:
 			switch(lParam) {
 			case BN_CLICKED: // push 
@@ -5642,7 +5753,7 @@ LRESULT UI_Calibration_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 		UI_Calibration_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		case RID_CALI_BTN_CALI0:
 			switch(lParam) {
 			case BN_CLICKED: // push 
@@ -5883,6 +5994,10 @@ void UI_SystemInit_Timer(uint16_t nIDEvent)
 				Setup3.writeTime = 0;
 				UI_SaveParamToEEPROM(CommonBuf);
 			}
+
+			#if defined(USE_ANG_MEA_METHOD_TYPE3)
+			AngChk.upOffset = 21; //length of from motor to force input point 
+			#endif
 #endif
 			break;
 		case 4: 
@@ -6040,7 +6155,7 @@ void UI_SystemInit_Timer(uint16_t nIDEvent)
     // Timer_sec = 0;
 }
 
-//½Ã½ºÅÛ ÃÊ±âÈ­ È­¸é ±¸¼º
+//ï¿½Ã½ï¿½ï¿½ï¿½ ï¿½Ê±ï¿½È­ È­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 //uint8_t key2[256];
 void UI_SystemInit_Init(void)
 {          
@@ -6084,7 +6199,7 @@ void UI_SystemInit_Init(void)
         
 }
 
-//ÅÍÄ¡³ª Å¸ÀÌ¸ÓµîÀÇ µ¿ÀÛ ±¸µ¿ ÇÁ·Î¼¼¼­
+//ï¿½ï¿½Ä¡ï¿½ï¿½ Å¸ï¿½Ì¸Óµï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Î¼ï¿½ï¿½ï¿½
 LRESULT UI_SystemInit_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg) {
@@ -6092,7 +6207,7 @@ LRESULT UI_SystemInit_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam
 		UI_SystemInit_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 			break;
 		default:
 			break;
@@ -6129,7 +6244,7 @@ LRESULT UI_SystemInit_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam
 	return 0;
 }
 
-//½Ã½ºÅÛ ÃÊ±âÈ­ Ã¢ »ý¼º
+//ï¿½Ã½ï¿½ï¿½ï¿½ ï¿½Ê±ï¿½È­ Ã¢ ï¿½ï¿½ï¿½ï¿½
 void UI_SystemInit_Create(void)
 {	
 	//API_SetWndNum(UI_WND_MODE_PARENT);
@@ -6224,6 +6339,10 @@ void UI_Loading_Timer(uint16_t nIDEvent)
 */
 	if (MotorDrv_GetFlagHomeIn()) 
 	{
+#ifdef USE_GET_MOTOR_FRICION
+		MotorDrv_StopHome();
+		App_KillTimer(TIMER_ID_1);
+#else
 		MotorDrv_SetTargetPosition(Setup3.IPos);
 		MotorDrv_StopHome();
 		App_KillTimer(TIMER_ID_1);
@@ -6259,8 +6378,15 @@ void  UI_Loading_Process(void)
 	//int i;
 	//uint8_t senseChkCnt;	
 	//if (!UI_CheckMotorStatus()) return;
+#ifdef USE_GET_MOTOR_FRICION
+	if (MotorDrv_GetFlagHomeIn()) {
+		UI_GetMotorFriction();
+		return;
+	}
+#endif
 	
 	//home-in switch break
+	#ifndef USE_GET_MOTOR_FRICION
 	#ifndef USE_JIG_TEST_MODE
 	if (UI_Time.tmp_sec > HOME_IN_TOTAL_TIME) {
 		MotorDrv_StopHome();
@@ -6270,6 +6396,7 @@ void  UI_Loading_Process(void)
 		API_SetErrorCode(EC_HOMEIN, EDT_DISP_HALT);
 		return;
 	}
+	#endif
 	#endif
 
 	if (MotorDrv_GetDirection() == MDD_CW) {
@@ -6293,10 +6420,14 @@ void  UI_Loading_Process(void)
 				MotorDrv_SetFlagLimitSW(0);
 				MotorDrv_SetFlagHomeIn(1);
 				App_SetUIProcess(UI_ProcessNull);
+				#endif //end of USE_JIG_TEST_MODE
+				#ifdef USE_GET_MOTOR_FRICION
+				MotorDrv_SetFlagHomeIn(1);
 				#endif
 			}
 		}
 		else {
+#ifndef USE_GET_MOTOR_FRICION
 			if (UI_GotoHomePosition()) {
 				MotorDrv_StopHome();
 				MotorDrv_SetFlagLimitSW(0);
@@ -6304,12 +6435,13 @@ void  UI_Loading_Process(void)
 				App_SetUIProcess(UI_ProcessNull);
 				//Setup3.IPos = (uint8_t)CommonBuf[0];//pjg++190813
 			}
+#endif
 		}
 	}
 }
 
 
-//È¨ÀÎ µ¿ÀÛ ÁßÁöÇÏ°í È¯ÀÚÁ¤º¸ Ã¢À¸·Î ÀÌµ¿ÇÏ°Ô ÇÔ
+//È¨ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï°ï¿½ È¯ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Ã¢ï¿½ï¿½ï¿½ï¿½ ï¿½Ìµï¿½ï¿½Ï°ï¿½ ï¿½ï¿½
 void UI_Loading_OnBnClickedBtnStop(void)
 {
 	//UI_Home_Create();
@@ -6348,7 +6480,7 @@ void UI_Loading_OnKeyUp(void)
 	UI_Loading_OnBnClickedBtnStop();
 }
 
-//È¨ÀÎ È­¸é ±¸¼º
+//È¨ï¿½ï¿½ È­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 void UI_Loading_Init(void)
 {
 	// button
@@ -6366,7 +6498,7 @@ void UI_Loading_Init(void)
 	/*if (!SysInfo.sn) {
 		API_SetErrorCode(EC_EMPTY_SYSINFO, EDT_DISP_HALT);
 		return;
-	}*/ // TEST ÈÄ ÇØÁ¦ 
+	}*/ // TEST ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ 
 	App_SetTimer(TIMER_ID_1, 50);//150000);
 	App_SetUIProcess(UI_Loading_Process);
 	loading = 0;
@@ -6396,7 +6528,7 @@ LRESULT UI_Loading_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		UI_Loading_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		case RID_LD_BTN_STOP:
 		case RID_LD_BTN_STOPK:
 		case RID_LD_BTN_STOPC:
@@ -6431,7 +6563,7 @@ LRESULT UI_Loading_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	return 0;
 }
-//È¨ÀÎ È­¸é »ý¼º
+//È¨ï¿½ï¿½ È­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 void UI_Loading_Create(void)
 {	
 	//API_SetWndNum(UI_WND_MODE_PARENT);
@@ -6541,7 +6673,7 @@ LRESULT UI_User_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		UI_User_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		case RID_USER_BTN_GUEST:
 			switch(lParam) {
 			case BN_CLICKED: // push 
@@ -6593,7 +6725,7 @@ void UI_User_Create(void)
 }
 
 //////////////////////////////////////////////////////////////////////////////
-//È¨ È­¸é 
+//È¨ È­ï¿½ï¿½ 
 void UI_Home_OnBnClickedBtnMeasure(void)
 {
 	int i;
@@ -6683,7 +6815,7 @@ LRESULT UI_Home_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		UI_Home_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		case RID_HOME_BTN_MEA:
 			switch(lParam) {
 			case BN_CLICKED: // push 
@@ -6735,7 +6867,7 @@ void UI_Home_Create(void)
 }
 ///////////////////////////////////////////////////////////////////////////////
 #if 0
-//°¢µµ ¼³Á¤ 
+//ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ 
 void UI_Angle_SetAngle_Pic(short angle,short angle2)
 {      
 	APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)DoubleBufStartCmd);
@@ -7127,7 +7259,7 @@ LRESULT UI_Angle_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		UI_Angle_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		/*case RID_ANG_BTN_LEFT:
 			switch(lParam) {
 			case BN_CLICKED: // push 
@@ -7417,7 +7549,7 @@ void UI_SpeedTime_OnBnClickedBtnSpdUp(void)
 	UI_SpeedTime_SetSpTm_Pic(SpdTmWnd.speed,SpdTmWnd.time);
 }
 
-//¸ðÅÍ ¼Óµµ ´Ü°è °ª °¨¼Ò
+//ï¿½ï¿½ï¿½ï¿½ ï¿½Óµï¿½ ï¿½Ü°ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 void UI_SpeedTime_OnBnClickedBtnSpdDown(void)
 {
 	int pos;
@@ -7492,7 +7624,7 @@ void UI_SpeedTime_OnBnLongClickedBtnSpdDown(void)
 	UI_SpeedTime_SetSpTm_Pic(SpdTmWnd.speed,SpdTmWnd.time);
 }
 
-//±¸µ¿½Ã°£ Áõ°¡
+//ï¿½ï¿½ï¿½ï¿½ï¿½Ã°ï¿½ ï¿½ï¿½ï¿½ï¿½
 void UI_SpeedTime_OnBnClickedBtnTmUp(void)
 {
 	  
@@ -7533,7 +7665,7 @@ void UI_SpeedTime_OnBnClickedBtnTmUp(void)
 	UI_SpeedTime_SetSpTm_Pic(SpdTmWnd.speed,SpdTmWnd.time);
 
 }
-//±¸µ¿½Ã°£ °¨¼Ò
+//ï¿½ï¿½ï¿½ï¿½ï¿½Ã°ï¿½ ï¿½ï¿½ï¿½ï¿½
 void UI_SpeedTime_OnBnClickedBtnTmDown(void)
 {
 	if(SpdTmWnd.time > 1) SpdTmWnd.time--;
@@ -7779,7 +7911,7 @@ LRESULT UI_SpeedTime_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		UI_SpeedTime_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		case RID_STS_BTN_LEFT:
 			switch(lParam) {
 			case BN_CLICKED: // push 
@@ -7908,7 +8040,7 @@ void UI_PopupRunModeVibReq_OnBnClickedBtnNo(void)
 	UI_Run_Create();
 }
 
-//±¸µ¿¿Ï·á È­¸é ±¸¼º
+//ï¿½ï¿½ï¿½ï¿½ï¿½Ï·ï¿½ È­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 void UI_PopupRunModeVibReq_Init(void)
 {
 	// button
@@ -7929,7 +8061,7 @@ LRESULT UI_PopupRunModeVibReq_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 		UI_PopupRunModeVibReq_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		case RID_FUCH_BTN_YES:
 		case RID_FUCH_BTN_YESK:
 		case RID_FUCH_BTN_YESC:
@@ -7965,7 +8097,7 @@ LRESULT UI_PopupRunModeVibReq_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARA
 
 	return 0;
 }
-//±¸µ¿¿Ï·á È­¸é »ý¼º
+//ï¿½ï¿½ï¿½ï¿½ï¿½Ï·ï¿½ È­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 void UI_PopupRunModeVibReq_Create(void)
 {
 	App_SetWndProcFnPtr(UI_PopupRunModeVibReq_WndProc);
@@ -8025,7 +8157,7 @@ LRESULT UI_PopupRunModeLPauseReq_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LP
 		UI_PopupRunModeLPauseReq_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		case RID_FUCH_BTN_YES:
 		case RID_FUCH_BTN_YESK:
 		case RID_FUCH_BTN_YESC:
@@ -8127,7 +8259,7 @@ LRESULT UI_PopupRunModeProgressReq_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, 
 		UI_PopupRunModeProgressReq_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		case RID_FUCH_BTN_YES:
 		case RID_FUCH_BTN_YESK:
 		case RID_FUCH_BTN_YESC:
@@ -8183,13 +8315,13 @@ void UI_PopupRunModeProgressReq_Create(void)
 void UI_Run_InitVar(void)
 {
 //          Total_Counter = 0;
-	RunWnd.play = UI_RUN_MODE_STOP;     //±¸µ¿»óÅÂ
-	RunWnd.dir = 0;                     //±¸µ¿ ¹æÇâ
-//	RunWnd.angle = AngleWnd.exAngle;    //¸ðÅÍÀÇ ±¸µ¿°¢µµ ÀúÀå
-	RunWnd.repeat = 0;                    //±¸µ¿ ¹Ýº¹È¸¼ö ÃÊ±âÈ­
+	RunWnd.play = UI_RUN_MODE_STOP;     //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+	RunWnd.dir = 0;                     //ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+//	RunWnd.angle = AngleWnd.exAngle;    //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+	RunWnd.repeat = 0;                    //ï¿½ï¿½ï¿½ï¿½ ï¿½Ýºï¿½È¸ï¿½ï¿½ ï¿½Ê±ï¿½È­
 //       RunWnd.angle = 0;//Current_Angle - 5;	//pjg<>171222
-	RunWnd.tick = 0;                    //¸ðÅÍ ±¸µ¿½Ã°£ Æ½(½Ã°£)°ª
-	RunWnd.time = SpdTmWnd.time;        //±¸µ¿ÇÑ ½Ã°£(ºÐ ´ÜÀ§
+	RunWnd.tick = 0;                    //ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ã°ï¿½ Æ½(ï¿½Ã°ï¿½)ï¿½ï¿½
+	RunWnd.time = SpdTmWnd.time;        //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ã°ï¿½(ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 	//UI_DisplayDecimal(UI_DISP_NUM_FNT9, UI_DISP_NUM_3PLACE, 30,160, RunWnd.angle);
 }
 
@@ -8357,7 +8489,7 @@ void UI_Run_Timer(uint16_t nIDEvent)
 						Timer_sec = 0;
 						#ifdef USE_QC_LIFE_TEST_SAVE_CUR
 						loading++;
-						if (loading >= 7200) {   //  ½ÃÇè Å×½ºÆ®½Ã¿¡ ½Ã°£ Á¤ÇØµÎ´Â °÷ 
+						if (loading >= 7200) {   //  ï¿½ï¿½ï¿½ï¿½ ï¿½×½ï¿½Æ®ï¿½Ã¿ï¿½ ï¿½Ã°ï¿½ ï¿½ï¿½ï¿½ØµÎ´ï¿½ ï¿½ï¿½ 
 							loading = 0;
 							QCLife.fStart = 0;
 							QCLife.fSave = 0;
@@ -8634,8 +8766,8 @@ void UI_Run_OnBnClickedBtnPlayStart(void)
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)pBtnInfo[RID_RN_BTN_PLAYING*2]);
 		//if (Setup2.sndGuid2 == BST_CHECKED)
 		APP_SendMessage(hParent, WM_SOUND, 0, SNDID_OPERATION_START);
-		//App_SetTimer(1, 150000); // ³Ê¹« ºü¸£¸é ±úÁü : max speed(150000)
-		App_SetTimer(TIMER_ID_2, 30);//00000); // ³Ê¹« ºü¸£¸é ±úÁü : max speed
+		//App_SetTimer(1, 150000); // ï¿½Ê¹ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ : max speed(150000)
+		App_SetTimer(TIMER_ID_2, 30);//00000); // ï¿½Ê¹ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ : max speed
 		App_SetUIProcess(UI_Run_Process); //pjg++170529
 		UI_LED_Control(LM_RUN);
 		//Total_Counter = PInfoWnd2.pi.totalRepeat;
@@ -8699,7 +8831,7 @@ void UI_Run_OnBnClickedBtnPause(void)
 	APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)pBtnInfo[RID_RN_BTN_PAUSE*2]);
 	//if (Setup2.sndGuid2 == BST_CHECKED)
        APP_SendMessage(0, WM_SOUND, 0, SNDID_OPERATION_STOP);
-	//App_SetTimer(1, 150000); // ³Ê¹« ºü¸£¸é ±úÁü : max speed(150000)
+	//App_SetTimer(1, 150000); // ï¿½Ê¹ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ : max speed(150000)
 	App_KillTimer(TIMER_ID_2);
 	App_SetUIProcess(UI_ProcessNull); //pjg++170529
 	UI_LED_Control(LM_PAUSE);
@@ -8721,7 +8853,7 @@ void UI_Run_OnBnClickedBtnPause(void)
 	MotorDrv_SetSensFlagRunOne(0);
 }
 
-//ÀÏ½ÃÁ¤Áö¿¡¼­ ÇÃ·¹ÀÌ¹öÆ°À» ´Ù½Ã ´©ÇÂ °æ¿ì
+//ï¿½Ï½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ã·ï¿½ï¿½Ì¹ï¿½Æ°ï¿½ï¿½ ï¿½Ù½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
 //pause->playing
 void UI_Run_OnBnClickedBtnPlay(void)
 {
@@ -8733,7 +8865,7 @@ void UI_Run_OnBnClickedBtnPlay(void)
 	APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)pBtnInfo[RID_RN_BTN_PLAYING*2]);
 	//if (Setup2.sndGuid2 == BST_CHECKED)
 	APP_SendMessage(hParent, WM_SOUND, 0, SNDID_OPERATION_START);
-	App_SetTimer(TIMER_ID_2, 30);//00000); // ³Ê¹« ºü¸£¸é ±úÁü : max speed
+	App_SetTimer(TIMER_ID_2, 30);//00000); // ï¿½Ê¹ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ : max speed
 	App_SetUIProcess(UI_Run_Process); //pjg++170529
 	UI_LED_Control(LM_RUN);
 	//PInfoWnd2.pi.totalRepeat = Total_Counter;
@@ -8806,7 +8938,7 @@ void UI_Run_OnBnClickedKeyBtnPlayHome(void)
 	}
 }
 
-//¸ØÃã¹öÆ°(stop)À» ´©¸¥°æ¿ì
+//ï¿½ï¿½ï¿½ï¿½ï¿½Æ°(stop)ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 /*
 void UI_Run_OnBnClickedBtnStop(void)
 {	
@@ -9521,7 +9653,7 @@ void UI_Run_QCLifeTest_SaveCurAtDeg(void)
 }
 #endif
 
-//±¸µ¿Áß¿¡ ½ÇÇàµÇ´Â ÇÔ¼ö
+//ï¿½ï¿½ï¿½ï¿½ï¿½ß¿ï¿½ ï¿½ï¿½ï¿½ï¿½Ç´ï¿½ ï¿½Ô¼ï¿½
 void UI_Run_Process(void)
 {
 	//uint32_t temp;
@@ -9530,7 +9662,7 @@ void UI_Run_Process(void)
 	//uint16_t *p;
 #endif
 
-   //¸ðÅÍ ±¸µ¿ÀÌ ¿Ï·á µÇ¾úÀ» °æ¿ì
+   //ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ï·ï¿½ ï¿½Ç¾ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
 	if (RunWnd.time == 0) {
 		if (RunWnd.play == UI_RUN_MODE_PLAY) {
 			API_ChangeHMenu(hParent, RID_RN_BTN_PAUSE, RID_RN_BTN_PLAY);
@@ -9572,7 +9704,7 @@ void UI_Run_Process(void)
 	}
 #endif
 }
-//±¸µ¿Áß¿¡ ½ÇÇàµÇ´Â ÇÔ¼ö
+//ï¿½ï¿½ï¿½ï¿½ï¿½ß¿ï¿½ ï¿½ï¿½ï¿½ï¿½Ç´ï¿½ ï¿½Ô¼ï¿½
 void UI_Run_OnKeyUp(uint32_t nChar)
 {
 	switch (nChar) {
@@ -9714,7 +9846,7 @@ LRESULT UI_Run_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		UI_Run_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		//
 		// PI
 		case RID_RN_BTN_LEFT:
@@ -9885,7 +10017,7 @@ LRESULT UI_Run_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-//¸ÞÀÎ È­¸é »ý¼º
+//ï¿½ï¿½ï¿½ï¿½ È­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 void UI_Run_Create(void)
 {	
 	App_SetWndProcFnPtr(UI_Run_WndProc);
@@ -9901,7 +10033,7 @@ void UI_Run_Create(void)
 }
 
 //////////////////////////////////////////////////////////////////////////////
-// run complete(±¸µ¿¿Ï·á)
+// run complete(ï¿½ï¿½ï¿½ï¿½ï¿½Ï·ï¿½)
 void UI_PopupRunComplete_OnBnClickedBtnOk(void)
 {	
 	//UI_AngleMeasure_Create();
@@ -9942,10 +10074,10 @@ void UI_PopupRunComplete_OnBnClickedBtnNo(void)
 	}
 	//pjg--190725 UI_SavePIToEEPROM(PInfoWnd2.id, (uint8_t *)CommonBuf);
 	
-	RunWnd.repeat = 0;                    //±¸µ¿ ¹Ýº¹È¸¼ö ÃÊ±âÈ­
+	RunWnd.repeat = 0;                    //ï¿½ï¿½ï¿½ï¿½ ï¿½Ýºï¿½È¸ï¿½ï¿½ ï¿½Ê±ï¿½È­
 }
 
-//±¸µ¿¿Ï·á È­¸é ±¸¼º
+//ï¿½ï¿½ï¿½ï¿½ï¿½Ï·ï¿½ È­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 void UI_PopupRunComplete_Init(void)
 {
 	//int i;
@@ -9999,7 +10131,7 @@ LRESULT UI_PopupRunComplete_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
 		UI_PopupRunComplete_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		case RID_RC_BTN_OK:
 		case RID_RC_BTN_OKK:
 		case RID_RC_BTN_OKC:
@@ -10033,7 +10165,7 @@ LRESULT UI_PopupRunComplete_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
 
 	return 0;
 }
-//±¸µ¿¿Ï·á È­¸é »ý¼º
+//ï¿½ï¿½ï¿½ï¿½ï¿½Ï·ï¿½ È­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 void UI_PopupRunComplete_Create(void)
 {
 	//API_SetWndNum(UI_WND_MODE_PARENT);
@@ -10142,7 +10274,7 @@ LRESULT UI_AdSet_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		UI_AdSet_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		case RID_SYS_BTN_BACK:
 			switch(lParam) {
 			case BN_CLICKED: // push 
@@ -10251,7 +10383,7 @@ void UI_Setup_Timer(uint16_t nIDEvent)
 	USBDisk_Process();
 }
 
-//½Ã½ºÅÛ ¼³Á¤ Ã¢ 
+//ï¿½Ã½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ Ã¢ 
 void UI_Setup_OnBnClickedBtnExit(void)
 { 
 	uint8_t *ptr, *ptr2, i, flag;
@@ -10327,7 +10459,7 @@ void UI_Setup_OnBnClickedBtnSysInfo(void)
 	UI_VersionInfo_Create();
 }
 
-//À½¼ºÅ©±â Á¶Á¤
+//ï¿½ï¿½ï¿½ï¿½Å©ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 void UI_Setup_SetSoundVolume(uint8_t value)
 {
 	int temp;
@@ -10357,7 +10489,7 @@ void UI_Setup_SetSoundVolume(uint8_t value)
 
 }					 
 
-//LCD¹à±â Á¶Á¤
+//LCDï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 void UI_Setup_SetBrightness(uint8_t value)
 {
 	if (value < 10) {
@@ -10463,7 +10595,7 @@ void UI_Setup_Sndset(uint8_t vol)
 			
 		}
 }
-//À½¼º¼Ò¸® Å°¿ò
+//ï¿½ï¿½ï¿½ï¿½ï¿½Ò¸ï¿½ Å°ï¿½ï¿½
 void UI_Setup_OnBnClickedBtnSndUp(void)
 {
 
@@ -10483,7 +10615,7 @@ void UI_Setup_OnBnClickedBtnSndUp(void)
 	
 }
 
-//À½¼º¼Ò¸® ÁÙÀÓ
+//ï¿½ï¿½ï¿½ï¿½ï¿½Ò¸ï¿½ ï¿½ï¿½ï¿½ï¿½
 void UI_Setup_OnBnClickedBtnSndDn(void)
 {
 	if (Setup2.vol > 0)Setup2.vol--;
@@ -10536,7 +10668,7 @@ void UI_Setup_OnBnClickedBtnSndDn(void)
 	}
 }*/
 
-//LCD ¹à°Ô
+//LCD ï¿½ï¿½ï¿½
 void UI_Setup_OnBnClickedBtnBRUp(void)
 {
 	if (Setup2.bright < BL_LEVEL_NUM-1)Setup2.bright++;
@@ -10559,7 +10691,7 @@ void UI_Setup_OnBnClickedBtnBRUp(void)
 
 	UI_Setup_SetBrightness(Setup2.bright);*/
 }
-//LCD ¾îµÓ°Ô
+//LCD ï¿½ï¿½Ó°ï¿½
 void UI_Setup_OnBnClickedBtnBRDn(void)
 {
 	if (Setup2.bright > 0)Setup2.bright--;
@@ -10894,7 +11026,7 @@ LRESULT UI_Setup_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		UI_Setup_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		//
 		// ASE
 		case RID_SYS_BTN_BACK:
@@ -11157,7 +11289,7 @@ LRESULT UI_PopupIDCreate_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 		UI_PopupIDCreate_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		case RID_PILRS_BTN_OK:
 		case RID_PILRS_BTN_OKK:
 		case RID_PILRS_BTN_OKC:
@@ -11200,7 +11332,7 @@ LRESULT UI_PopupIDCreate_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 
 	return 0;
 }
-//USB ÀúÀå È­¸é »ý¼º
+//USB ï¿½ï¿½ï¿½ï¿½ È­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 void UI_PopupIDCreate_Create(void)
 {	
 
@@ -11332,7 +11464,7 @@ LRESULT UI_PopupIDRight_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 		UI_PopupIDRight_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		case RID_PILRS_BTN_OK:
 		case RID_PILRS_BTN_OKK:
 		case RID_PILRS_BTN_OKC:
@@ -11375,7 +11507,7 @@ LRESULT UI_PopupIDRight_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 	return 0;
 }
-//USB ÀúÀå È­¸é »ý¼º
+//USB ï¿½ï¿½ï¿½ï¿½ È­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 void UI_PopupIDRight_Create(void)
 {	
 	App_SetWndProcFnPtr(UI_PopupIDRight_WndProc);
@@ -12388,7 +12520,7 @@ LRESULT UI_PiLoad_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		UI_PiLoad_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		//
 		// PI
 		/*case RID_PLD_BTN_LEFT:
@@ -12679,7 +12811,7 @@ LRESULT UI_PiReset_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	return 0;
 }
-//USB ÀúÀå È­¸é »ý¼º
+//USB ï¿½ï¿½ï¿½ï¿½ È­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 void UI_PiReset_Create(void)
 {	
 	App_SetWndProcFnPtr(UI_PiReset_WndProc);
@@ -13327,7 +13459,7 @@ LRESULT UI_PiLoad2_WndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		UI_PiLoad2_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		//
 		// PI
 		case RID_PLD2_BTN_RESET:
@@ -13632,7 +13764,7 @@ LRESULT UI_PiReset2_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	return 0;
 }
-//USB ÀúÀå È­¸é »ý¼º
+//USB ï¿½ï¿½ï¿½ï¿½ È­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 void UI_PiReset2_Create(void)
 {	
 	App_SetWndProcFnPtr(UI_PiReset2_WndProc);
@@ -14279,7 +14411,7 @@ LRESULT UI_PiLoad3_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		UI_PiLoad3_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		//
 		// PI
 		case RID_PLD3_BTN_RESET:
@@ -14584,7 +14716,7 @@ LRESULT UI_PiReset3_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	return 0;
 }
-//USB ÀúÀå È­¸é »ý¼º
+//USB ï¿½ï¿½ï¿½ï¿½ È­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 void UI_PiReset3_Create(void)
 {	
 	App_SetWndProcFnPtr(UI_PiReset3_WndProc);
@@ -15229,7 +15361,7 @@ LRESULT UI_PiLoad4_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		UI_PiLoad4_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		//
 		// PI
 		case RID_PLD4_BTN_RESET:
@@ -15534,7 +15666,7 @@ LRESULT UI_PiReset4_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	return 0;
 }
-//USB ÀúÀå È­¸é »ý¼º
+//USB ï¿½ï¿½ï¿½ï¿½ È­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 void UI_PiReset4_Create(void)
 {	
 	App_SetWndProcFnPtr(UI_PiReset4_WndProc);
@@ -15627,14 +15759,14 @@ void UI_RunPIInit_Create(void)
 	
 }
 //
-// run complete(±¸µ¿¿Ï·á)
+// run complete(ï¿½ï¿½ï¿½ï¿½ï¿½Ï·ï¿½)
 void UI_PopupRunComplete_OnBnClickedBtnOk(void)
 {
 	UI_Play_Create();
 	UI_LED_Control(LM_STAND_BY);
 	Total_Counter = PInfoWnd2.pi.totalRepeat;
 }
-//±¸µ¿¿Ï·á È­¸é ±¸¼º
+//ï¿½ï¿½ï¿½ï¿½ï¿½Ï·ï¿½ È­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 void UI_PopupRunComplete_Init(void)
 {
 	// button
@@ -15668,7 +15800,7 @@ LRESULT UI_PopupRunComplete_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
 		UI_PopupRunComplete_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		//
 		// Speed time setting
 		case RID_RC_BTN_OK:
@@ -15695,7 +15827,7 @@ LRESULT UI_PopupRunComplete_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
 
 	return 0;
 }
-//±¸µ¿¿Ï·á È­¸é »ý¼º
+//ï¿½ï¿½ï¿½ï¿½ï¿½Ï·ï¿½ È­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 void UI_PopupRunComplete_Create(void)
 {
 	//API_SetWndNum(UI_WND_MODE_PARENT);
@@ -15708,17 +15840,17 @@ void UI_PopupRunComplete_Create(void)
 }
 
 //
-// run(±¸µ¿)
+// run(ï¿½ï¿½ï¿½ï¿½)
 void UI_Run_InitVar(void)
 {
-          RunWnd.repeat = 0;                    //±¸µ¿ ¹Ýº¹È¸¼ö ÃÊ±âÈ­
+          RunWnd.repeat = 0;                    //ï¿½ï¿½ï¿½ï¿½ ï¿½Ýºï¿½È¸ï¿½ï¿½ ï¿½Ê±ï¿½È­
 //          Total_Counter = 0;
-	RunWnd.play = UI_RUN_MODE_STOP;     //±¸µ¿»óÅÂ
-	RunWnd.dir = 0;                     //±¸µ¿ ¹æÇâ
-//	RunWnd.angle = AngleWnd.exAngle;    //¸ðÅÍÀÇ ±¸µ¿°¢µµ ÀúÀå
+	RunWnd.play = UI_RUN_MODE_STOP;     //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+	RunWnd.dir = 0;                     //ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+//	RunWnd.angle = AngleWnd.exAngle;    //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
           RunWnd.angle = Current_Angle - 5;
-	RunWnd.tick = 0;                    //¸ðÅÍ ±¸µ¿½Ã°£ Æ½(½Ã°£)°ª
-	RunWnd.time = SpdTmWnd.time;        //±¸µ¿ÇÑ ½Ã°£(ºÐ ´ÜÀ§)
+	RunWnd.tick = 0;                    //ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ã°ï¿½ Æ½(ï¿½Ã°ï¿½)ï¿½ï¿½
+	RunWnd.time = SpdTmWnd.time;        //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ã°ï¿½(ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½)
 	RunWnd2.motorOverloadCnt = 0;	//pjg++170626
 }
 
@@ -15741,7 +15873,7 @@ void UI_Run_OnBnClickedBtnRight(void)
 {
 	//UI_Run_Init();
 }
-//Ã³À½ ±¸µ¿(ÇÃ·¹ÀÌ) ¹öÆ° ´­·ê °æ¿ì
+//Ã³ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½(ï¿½Ã·ï¿½ï¿½ï¿½) ï¿½ï¿½Æ° ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
 void UI_Run_OnBnClickedBtnPlayStart(void)
 {
     Run_mode = 1;
@@ -15750,14 +15882,14 @@ void UI_Run_OnBnClickedBtnPlayStart(void)
 	APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)pBtnInfo[RID_RN_BTN_PLAYING*2]);
 	if (Setup2.sndGuid2== BST_CHECKED)
 		APP_SendMessage(hParent, WM_SOUND, 0, SNDID_OPERATION_START);
-	//App_SetTimer(1, 150000); // ³Ê¹« ºü¸£¸é ±úÁü : max speed(150000)
-	App_SetTimer(TIMER_ID_2, 200); // ³Ê¹« ºü¸£¸é ±úÁü : max speed
+	//App_SetTimer(1, 150000); // ï¿½Ê¹ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ : max speed(150000)
+	App_SetTimer(TIMER_ID_2, 200); // ï¿½Ê¹ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ : max speed
 	App_SetUIProcess(UI_Run_Process); //pjg++170529
 	UI_LED_Control(LM_RUN);
 	Total_Counter = PInfoWnd2.pi.totalRepeat;
 	Timer_sec = 0; //pjg++170608 buf fix: complete right now
 }
-//±¸µ¿ Áß¿¡ ÇÃ·¹ÀÌ ¹öÆ°À» ´Ù½Ã ´©¸¥ °æ¿ì(ÀÏ½ÃÁ¤Áö)
+//ï¿½ï¿½ï¿½ï¿½ ï¿½ß¿ï¿½ ï¿½Ã·ï¿½ï¿½ï¿½ ï¿½ï¿½Æ°ï¿½ï¿½ ï¿½Ù½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½(ï¿½Ï½ï¿½ï¿½ï¿½ï¿½ï¿½)
 void UI_Run_OnBnClickedBtnPause(void)
 {
 
@@ -15767,14 +15899,14 @@ void UI_Run_OnBnClickedBtnPause(void)
 	APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)pBtnInfo[RID_RN_BTN_PAUSE*2]);
 	if (Setup2.sndGuid2 == BST_CHECKED)
               APP_SendMessage(0, WM_SOUND, 0, SNDID_OPERATION_STOP);
-	//App_SetTimer(1, 150000); // ³Ê¹« ºü¸£¸é ±úÁü : max speed(150000)
+	//App_SetTimer(1, 150000); // ï¿½Ê¹ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ : max speed(150000)
 	App_KillTimer(TIMER_ID_2);
 	App_SetUIProcess(UI_ProcessNull); //pjg++170529
 	UI_LED_Control(LM_PAUSE);
 	PInfoWnd2.pi.totalRepeat = Total_Counter;
 	UI_Run_PopupMotorOverload(0);
 }
-//ÀÏ½ÃÁ¤Áö¿¡¼­ ÇÃ·¹ÀÌ¹öÆ°À» ´Ù½Ã ´©ÇÂ °æ¿ì
+//ï¿½Ï½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ã·ï¿½ï¿½Ì¹ï¿½Æ°ï¿½ï¿½ ï¿½Ù½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
 void UI_Run_OnBnClickedBtnPlay(void)
 {
     Run_mode = 1;
@@ -15783,7 +15915,7 @@ void UI_Run_OnBnClickedBtnPlay(void)
 	APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)pBtnInfo[RID_RN_BTN_PLAYING*2]);
 	if (Setup.sndGuid == BST_CHECKED)
 		APP_SendMessage(hParent, WM_SOUND, 0, SNDID_OPERATION_START);
-		App_SetTimer(TIMER_ID_2, 200); // ³Ê¹« ºü¸£¸é ±úÁü : max speed
+		App_SetTimer(TIMER_ID_2, 200); // ï¿½Ê¹ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ : max speed
 		App_SetUIProcess(UI_Run_Process); //pjg++170529
 		UI_LED_Control(LM_RUN);
 		PInfoWnd2.pi.totalRepeat = Total_Counter;
@@ -15791,7 +15923,7 @@ void UI_Run_OnBnClickedBtnPlay(void)
 		
 		UI_SavePIToEEPROM(PInfoWnd2.id, (uint8_t *)CommonBuf);
 }
-//¸ØÃã¹öÆ°(stop)À» ´©¸¥°æ¿ì
+//ï¿½ï¿½ï¿½ï¿½ï¿½Æ°(stop)ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 void UI_Run_OnBnClickedBtnStop(void)
 {	
     Run_mode = 0;
@@ -15815,7 +15947,7 @@ void UI_Run_OnBnClickedBtnStop(void)
 		UI_SavePIToEEPROM(PInfoWnd2.id, (uint8_t *)CommonBuf);
 	}
 }
-//È¯ÀÚÁ¤º¸ Ã¢À¸·Î ÀÌµ¿
+//È¯ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Ã¢ï¿½ï¿½ï¿½ï¿½ ï¿½Ìµï¿½
 void UI_Run_OnBnClickedBtnGoFirst(void)
 {
         Run_mode = 0;
@@ -16002,10 +16134,10 @@ void UI_Run_PopupMotorOverload(uint32_t level)
 	}
 }
 
-//±¸µ¿Áß¿¡ ½ÇÇàµÇ´Â ÇÔ¼ö
+//ï¿½ï¿½ï¿½ï¿½ï¿½ß¿ï¿½ ï¿½ï¿½ï¿½ï¿½Ç´ï¿½ ï¿½Ô¼ï¿½
 void UI_Run_Process(void)
 {
-   //¸ðÅÍ ±¸µ¿ÀÌ ¿Ï·á µÇ¾úÀ» °æ¿ì
+   //ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ï·ï¿½ ï¿½Ç¾ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
 	if (RunWnd.time == 0) {
 		if (RunWnd.play == UI_RUN_MODE_PLAY) {
 			//App_SetUIProcess(UI_ProcessNull);
@@ -16049,18 +16181,18 @@ void UI_Run_Process(void)
 	//UI_Run_ProgressiveMode();
 	//UI_Run_WaitingMode();
 }
-//±¸µ¿Áß¿¡ ½ÇÇàµÇ´Â ÇÔ¼ö
+//ï¿½ï¿½ï¿½ï¿½ï¿½ß¿ï¿½ ï¿½ï¿½ï¿½ï¿½Ç´ï¿½ ï¿½Ô¼ï¿½
 
 void UI_Run_DisplayValue(void)
 {
-	//±¸µ¿ ½Ã°£ Ç¥Çö
+	//ï¿½ï¿½ï¿½ï¿½ ï¿½Ã°ï¿½ Ç¥ï¿½ï¿½
 	UI_DisplayDecimal(UI_DISP_NUM_FNT5, UI_DISP_NUM_4PLACE, 410, 59, RunWnd.time);
-    //¸ðÅÍ °¢µµ Ç¥Çö
+    //ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ Ç¥ï¿½ï¿½
 	UI_DisplayDecimal(UI_DISP_NUM_FNT5, UI_DISP_NUM_5PLACE, 410, 151, RunWnd.angle);
-    //±¸µ¿ ¹Ýº¹ÇÑ È½¼ö Ç¥Çö
+    //ï¿½ï¿½ï¿½ï¿½ ï¿½Ýºï¿½ï¿½ï¿½ È½ï¿½ï¿½ Ç¥ï¿½ï¿½
 	UI_DisplayDecimal(UI_DISP_NUM_FNT5, UI_DISP_NUM_6PLACE, 410, 105, RunWnd.repeat);
        UI_DisplayDecimal5(UI_DISP_NUM_FNT5, UI_DISP_NUM_3PLACE, 58, 154, Total_Counter);
-    //ÇöÀç±îÁö ±¸µ¿ÇÑ ÃÑ ½Ã°£ Ç¥Çö
+    //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Ã°ï¿½ Ç¥ï¿½ï¿½
 //	PInfoWnd.totalTime++;
 	UI_DisplayDecimal5(UI_DISP_NUM_FNT5, UI_DISP_NUM_2PLACE, 58,106, PInfoWnd2.pi.totalTime);
 	//if (PInfoWnd.totalTime > 999) PInfoWnd.totalTime = 0;
@@ -16133,7 +16265,7 @@ void UI_Run_DisplayValue(void)
 		UI_Run_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		//
 		//run
 		case RID_RN_BTN_LEFT:
@@ -16215,7 +16347,7 @@ void UI_Run_DisplayValue(void)
 
 	return 0;
 }*/
-//±¸µ¿È­¸é »ý¼º
+//ï¿½ï¿½ï¿½ï¿½È­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 /*void UI_Run_Create(void)
 {
 	//API_SetWndNum(UI_WND_MODE_PARENT);
@@ -16228,7 +16360,7 @@ void UI_Run_DisplayValue(void)
 }*/
 
 //
-// setup(¼¼ºÎ ¼³Á¤1)
+// setup(ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½1)
 //
 
 void UI_Progress_OnBnClickedBtnLeft(void)
@@ -16506,7 +16638,7 @@ void UI_Progress_Process(void)
 
 }
 
-//¼³Á¤Ã¢ ±¸¼º
+//ï¿½ï¿½ï¿½ï¿½Ã¢ ï¿½ï¿½ï¿½ï¿½
 void UI_Progress_Init(void)
 {
    // limit section repeat button
@@ -16630,7 +16762,7 @@ LRESULT UI_Progress_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		UI_Progress_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		//
 		//setup
 		case RID_PRO_BTN_EXIT:
@@ -16724,7 +16856,7 @@ LRESULT UI_Progress_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-//¼³Á¤Ã¢ »ý¼º
+//ï¿½ï¿½ï¿½ï¿½Ã¢ ï¿½ï¿½ï¿½ï¿½
 void UI_Progress_Create(void)
 {
 	App_SetWndProcFnPtr(UI_Progress_WndProc);
@@ -16736,7 +16868,7 @@ void UI_Progress_Create(void)
 }
 //ydy>++170330 all
 
-// setup(¼¼ºÎ ¼³Á¤2)
+// setup(ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½2)
 void UI_Pause_OnBnClickedBtnLeft(void)
 {
 	//if (loginInfo.type == LIT_USER) UI_SavePIToEEPROM(PInfoWnd2.id, (uint8_t *)CommonBuf);	
@@ -16974,7 +17106,7 @@ LRESULT UI_Pause_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		UI_Pause_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		//
 		//setup
 		case RID_LP_BTN_LEFT:
@@ -17062,7 +17194,7 @@ void UI_Pause_Create(void)
 
 //ydy<++170330 all
 
-// setup(¼¼ºÎ ¼³Á¤3)
+// setup(ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½3)
 void UI_Vibration_OnBnClickedBtnLeft(void)
 {
 	//if (loginInfo.type == LIT_USER) UI_SavePIToEEPROM(PInfoWnd2.id, (uint8_t *)CommonBuf);	
@@ -17403,7 +17535,7 @@ LRESULT UI_Vibration_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		UI_Vibration_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		//
 		//setup
 		case RID_LP_BTN_LEFT:
@@ -17689,7 +17821,7 @@ LRESULT UI_HomePos_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		UI_HomePos_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		//
 		//setup
 		case RID_LP_BTN_LEFT:
@@ -17895,7 +18027,7 @@ LRESULT UI_Sens_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		UI_Sens_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		//
 		//setup
 		case RID_LP_BTN_LEFT:
@@ -18074,7 +18206,7 @@ LRESULT UI_PopupUSBCheck_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 
 	return 0;
 }
-//USBÃ¢ »ý¼º
+//USBÃ¢ ï¿½ï¿½ï¿½ï¿½
 void UI_PopupUSBCheck_Create(void)
 {
 	App_SetWndProcFnPtr(UI_PopupUSBCheck_WndProc);
@@ -18461,7 +18593,7 @@ LRESULT UI_PiUSB_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	return 0;
 }
-//USBÃ¢ »ý¼º
+//USBÃ¢ ï¿½ï¿½ï¿½ï¿½
 void UI_PiUSB_Create(void)
 {
 	App_SetWndProcFnPtr(UI_PiUSB_WndProc);
@@ -18486,7 +18618,7 @@ void UI_PopupSaving_Timer(uint16_t nIDEvent)
 	UI_AniProgress2(loading);
 }
 
-//USB ÀúÀå È­¸é ±¸¼º
+//USB ï¿½ï¿½ï¿½ï¿½ È­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 //uint32_t test_delay = 0;
 void UI_PopupSaving_Process(void)
 {
@@ -19094,7 +19226,7 @@ LRESULT UI_PopupSaving_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 		UI_PopupSaving_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 			break;
 		default:
 			break;
@@ -19120,7 +19252,7 @@ LRESULT UI_PopupSaving_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 
 	return 0;
 }
-//USB ÀúÀå È­¸é »ý¼º
+//USB ï¿½ï¿½ï¿½ï¿½ È­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 void UI_PopupSaving_Create(void)
 {	
 
@@ -19532,7 +19664,7 @@ LRESULT UI_VersionInfo_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 	return 0;
 }
 
-//È¯ÀÚ¹öÀüÁ¤º¸Ã¢ »ý¼º
+//È¯ï¿½Ú¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ã¢ ï¿½ï¿½ï¿½ï¿½
 void UI_VersionInfo_Create(void)
 {
 	App_SetWndProcFnPtr(UI_VersionInfo_WndProc);
@@ -19769,7 +19901,7 @@ LRESULT UI_PopupDeleting_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 		UI_PopupDeleting_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 			break;
 		default:
 			break;
@@ -19995,7 +20127,7 @@ LRESULT UI_PopupDelData_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 		UI_PopupDelData_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 			break;
 		default:
 			break;
@@ -20021,7 +20153,7 @@ LRESULT UI_PopupDelData_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 	return 0;
 }
-//USB ÀúÀå È­¸é »ý¼º
+//USB ï¿½ï¿½ï¿½ï¿½ È­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 void UI_PopupDelData_Create(void)
 {	
 	App_SetWndProcFnPtr(UI_PopupDelData_WndProc);
@@ -20132,7 +20264,7 @@ LRESULT UI_PiReset_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	return 0;
 }
-//USBÃ¢ »ý¼º
+//USBÃ¢ ï¿½ï¿½ï¿½ï¿½
 void UI_PiReset_Create(void)
 {
 	App_SetWndProcFnPtr(UI_PiReset_WndProc);
@@ -20141,7 +20273,7 @@ void UI_PiReset_Create(void)
 			0, 0, 480, 272, hDeskTop, 0, 0);
 }
 
-//USB ÀúÀå È­¸é ±¸¼º
+//USB ï¿½ï¿½ï¿½ï¿½ È­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 void UI_Deleting_Init(void)
 {
 	//int i;
@@ -20171,7 +20303,7 @@ LRESULT UI_Deleting_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		UI_Deleting_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 			break;
 		default:
 			break;
@@ -20197,7 +20329,7 @@ LRESULT UI_Deleting_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	return 0;
 }
-//USB ÀúÀå È­¸é »ý¼º
+//USB ï¿½ï¿½ï¿½ï¿½ È­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 void UI_Deleting_Create(void)
 {	
 	App_SetWndProcFnPtr(UI_Deleting_WndProc);
@@ -20667,24 +20799,43 @@ void UI_AngleMeasure_Timer(uint16_t nIDEvent)
 void UI_AngleMeasure_CheckCurrentSensitivity(void)
 {
 	uint32_t cur;//, result;
-	float ftemp, ftemp2;
+	static float ftemp, ftemp2;
 	uint8_t buf[30];
+	static uint32_t friction;
+	const float speed[MS_SPEED_MAX] = {
+		0.5,
+		0.8,
+		1.3,
+		1.8,
+		2.8
+	};
 	//uint8_t temp;
+	//
+	//friction function parma
+	//a	9.2888
+	//b	21.194
+	//c	364.3
+	
 	
 	if (UI_Time.tmp2_ms == 0) { //run every 10ms
-		UI_Time.tmp2_ms = 10; //ori
+		UI_Time.tmp2_ms = 10;
 	}
 	else return;
 
 	cur = MotorDrv_GetCurrent();
 	AngChk.cur = cur;
 	if (AngChk.runOne == 0 || UI_Time.tmp4_ms != 0) {
+		#ifdef USE_ANG_MEA_METHOD_TYPE3
+		//if (AngChk.runOne == 0) {
+			AngChk.prevCur = cur;//(uint32_t)((float)cur*cosf((float)RunWnd.angle));
+		//}
+		#else
 		AngChk.prevCur = cur;
+		#endif
 		AngChk.runOne++;// = 1;
 		AngChk.prev = (float)cur;
 		AngChk.angle = RunWnd.angle;
 		AngChk.sameCnt = 0;
-        AngChk.checkCnt = 0;
 		//if (MotorDrv_GetDirection() == MDD_CCW) {
 			//AngChk.y = (short)(0.00002 * 134 * 134 * 134 +
 			//		-0.002 * 134 * 134 +
@@ -20703,10 +20854,13 @@ void UI_AngleMeasure_CheckCurrentSensitivity(void)
 		return;
 	}
 	else {
+		#ifdef USE_ANG_MEA_METHOD_TYPE3
+		#else
 		ftemp = AngChk.alpha*(float)cur;
 		ftemp2 = ((float)1.0-AngChk.alpha)*AngChk.prev;
 		AngChk.prev = ftemp+ftemp2;
 		AngChk.prevCur = (uint32_t)(AngChk.prev);
+		#endif
 		/*
 		if (test.cnt < TEST_BUF_SIZE/2) {
 			test.buf[test.cnt] = ftemp;
@@ -20731,27 +20885,46 @@ void UI_AngleMeasure_CheckCurrentSensitivity(void)
 	else {
 		if ((RunWnd.angle- AngChk.angle) < ANGLE_MIN_DEG) return;
 	}
-      
+
+#if defined(USE_ANG_MEA_METHOD_TYPE3)
+	//AngChk.diff = (int16_t)((float)AngChk.prevCur*cosf((float)RunWnd.angle)) + (Setup3.amSens*1000) * (int16_t)((float)AngChk.upOffset/100.0); //AngChk.upOffset : link length
+	//AngChk.diff = (uint32_t)((float)cur*cosf(((float)RunWnd.angle*3.14)/180.0));
+	friction = (uint32_t)(9.2888*(float)speed[SpdTmWnd.speed-1]*(float)speed[SpdTmWnd.speed-1] + 
+			21.194*(float)speed[SpdTmWnd.speed-1] + 
+			364.3);
+	ftemp = cosf(((float)RunWnd.angle*3.14159265358979f)/180.0);
+	ftemp2 = (float)cur - (float)friction;
+	AngChk.diff = (int32_t)cur - (int32_t)friction;// - (int32_t)(ftemp*(float)48.5);
+	if (AngChk.diff < -100) {
+		//MotorDrv_Release();
+        ftemp2 = 0;
+	}
+	
+#else
 	AngChk.diff = cur-AngChk.prevCur;
+#endif
+
 #if 1 // current monitor
-		//temp = MotorDrv_GetCurrent();
-		ConvertULong2String((int16_t)cur, (uint8_t *)buf, 11);
+	//temp = MotorDrv_GetCurrent();
+	if (AngChk.runOne != 0 && UI_Time.tmp4_ms == 0) {
+		ConvertULong2String((uint32_t)cur, (uint8_t *)buf, 11);
 		uart_putstring3((char *)buf);
 		uart_putchar3(',');
 		ConvertULong2String((int16_t)AngChk.prevCur, (uint8_t *)buf, 11);
 		uart_putstring3((char *)buf);
 		uart_putchar3(',');
-		ConvertULong2String((int8_t)AngChk.diff, (uint8_t *)buf, 11);
+		ConvertULong2String((int16_t)AngChk.diff, (uint8_t *)buf, 11);
 		uart_putstring3((char *)buf);
 		uart_putchar3(',');
 		ConvertULong2String((int16_t)RunWnd.angle, buf, 11);
 		uart_putstring3((char *)buf);
 		uart_putchar3('\r');
 		uart_putchar3('\n');
+	}
 #endif
 
 #ifdef USE_ANG_MEA_METHOD_TYPE1
-#elif USE_ANG_MEA_METHOD_TYPE2
+#elif defined(USE_ANG_MEA_METHOD_TYPE2)
 	if (MotorDrv_GetDirection() == MDD_CCW) {
 		AngChk.temp = (short)(0.0016 * (float)RunWnd.angle * (float)RunWnd.angle +
 				-0.0851 * (float)RunWnd.angle + 1.8172);
@@ -20762,6 +20935,7 @@ void UI_AngleMeasure_CheckCurrentSensitivity(void)
 				-0.0785 * (float)RunWnd.angle + 44.175);
 		AngChk.diff += (AngChk.temp-5);
 	}
+#elif defined(USE_ANG_MEA_METHOD_TYPE3)
 #else
 	if (MotorDrv_GetDirection() == MDD_CCW) {
 		//AngChk.temp = (short)(0.00002 * (float)RunWnd.angle * (float)RunWnd.angle * (float)RunWnd.angle +
@@ -20785,22 +20959,20 @@ void UI_AngleMeasure_CheckCurrentSensitivity(void)
 	}
 #endif
 
-	if (AngChk.diff > AngChk.gap) {
-      AngChk.checkCnt++;
-      if (AngChk.checkCnt > 5) {
-        AngChk.checkCnt = AngChk.checkCnt = 0;
+	if (0) {//AngChk.diff > AngChk.gap) {
 		AngChk.sameCnt++;
-      }
 		if (AngChk.sameCnt > 3 && UI_Time.tmp3_ms == 0) {
 			MotorDrv_SetFlagSensCurrent(0);
 			AngChk.runOne = 0;
 			UI_Time.tmp3_ms = 2000;
 			if (MotorDrv_GetDirection() == MDD_CCW) {
 				AngleWnd.flAngle = RunWnd.angle;
+				uart_putstring3((char *)"set flex mea\r\n");
 			}
 			else {
 				if ((AngleWnd.flAngle - RunWnd.angle) > ANGLE_MIN_GAP) //pjg++191028 : prevent vibration action
 					AngleWnd.exAngle = RunWnd.angle;
+					uart_putstring3((char *)"set ext mea\r\n");
 			}
 		}
 	}
@@ -20895,20 +21067,26 @@ void UI_AngleMeasure_Process(void)
 				UI_AngleMeasure_DispMeaValue();
 				UI_AngleMeasure_SetAngle_Pic(RunWnd.angle, AngleWnd.flAngle);
 				UI_Time.tmp3_ms = 1000;
+				//#if defined(USE_ANG_MEA_METHOD_TYPE3)
+				//#else
 				UI_Time.tmp4_ms = 2000;
-
+				//#endif
 				MotorDrv_SetDirection(MDD_CW);
 				MotorDrv_SetFlagRunOne(0);
 				MotorDrv_MoveUp();
-				AngChk.runOne = 0;
 				AngChk.mode = 0;
+				#if defined(USE_ANG_MEA_METHOD_TYPE3)
+				#else
+				AngChk.runOne = 0;
 				AngChk.prevCur = 0;
+				#endif
 				#ifdef USE_ANG_MEA_METHOD_TYPE1
 				AngChk.gapBk = amSensitivity[AMD_EXTENTION][Setup3.amSens-1][AMVT_GAP];
 				AngChk.upOffset = amSensitivity[AMD_EXTENTION][Setup3.amSens-1][AMVT_NOGRAVITY2MAX];
 				AngChk.gap = AngChk.gapBk + AngChk.upOffset;
-				#elif USE_ANG_MEA_METHOD_TYPE2
+				#elif defined(USE_ANG_MEA_METHOD_TYPE2)
 				AngChk.gap = amSensitivity[AMD_EXTENTION][Setup3.amSens-1][AMVT_GAP];
+				#elif defined(USE_ANG_MEA_METHOD_TYPE3)
 				#endif
 			}
 		}
@@ -20923,8 +21101,10 @@ void UI_AngleMeasure_Process(void)
 				AngChk.upOffset = amSensitivity[AMD_FLEXTION][Setup3.amSens-1][AMVT_NOGRAVITY2MAX];
 				AngChk.gap = AngChk.gapBk + AngChk.upOffset;
 			}
-			#elif USE_ANG_MEA_METHOD_TYPE2
+			#elif defined(USE_ANG_MEA_METHOD_TYPE2)
 			AngChk.gap = amSensitivity[AMD_EXTENTION][Setup3.amSens-1][AMVT_GAP];
+			#elif defined(USE_ANG_MEA_METHOD_TYPE3)
+            //AngChk.gap = 0;
 			#endif
 		}
 	}
@@ -20943,6 +21123,7 @@ void UI_AngleMeasure_Process(void)
 					APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i meacom.png,346,163\r");
 				}
 				UI_AngleMeasure_OnBnClickedBtnPause();
+				#ifdef USE_ANG_MEA_METHOD_TYPE1
 				if (RunWnd.angle < ANG_MEA_NO_GRAVITY_ANGLE) {
 					AngChk.gapBk = amSensitivity[AMD_FLEXTION][Setup3.amSens-1][AMVT_GAP];
 					AngChk.gap = AngChk.gapBk;
@@ -20951,6 +21132,9 @@ void UI_AngleMeasure_Process(void)
 					AngChk.upOffset = amSensitivity[AMD_FLEXTION][Setup3.amSens-1][AMVT_NOGRAVITY2MAX];
 					AngChk.gap = AngChk.gapBk + AngChk.upOffset;
 				}
+				#elif defined(USE_ANG_MEA_METHOD_TYPE3)
+				AngChk.runOne = 0;
+				#endif
 				//popup
 				App_SetTimer(TIMER_ID_5, 10);
 			}
@@ -21026,8 +21210,8 @@ void UI_AngleMeasure_OnBnClickedBtnAutoCheckAngle(void)
 //	APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)pBtnInfo[RID_RN_BTN_PLAYING*2]);
 	//if (Setup2.sndGuid2 == BST_CHECKED)
 	APP_SendMessage(hParent, WM_SOUND, 0, SNDID_OPERATION_START);
-	//App_SetTimer(1, 150000); // ³Ê¹« ºü¸£¸é ±úÁü : max speed(150000)
-	App_SetTimer(TIMER_ID_6, 50);//00000); // ³Ê¹« ºü¸£¸é ±úÁü : max speed
+	//App_SetTimer(1, 150000); // ï¿½Ê¹ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ : max speed(150000)
+	App_SetTimer(TIMER_ID_6, 50);//00000); // ï¿½Ê¹ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ : max speed
 	App_SetUIProcess(UI_AngleMeasure_Process); //pjg++170529
 	UI_LED_Control(LM_RUN);
 	//Total_Counter = PInfoWnd2.pi.totalRepeat;
@@ -21051,12 +21235,12 @@ void UI_AngleMeasure_OnBnClickedBtnAutoCheckAngle(void)
 	//AngChk.ext = AngleWnd.exAngle;
 	//AngChk.flex = AngleWnd.flAngle;
 	AngleWnd.exAngle = ANG_CHK_ANGLE_MIN;
-	AngleWnd.flAngle = ANG_CHK_ANGLE_MAX;
+	AngleWnd.flAngle = 120;//ANG_CHK_ANGLE_MAX;
 	AngChk.runOne = 0;
 	AngChk.mode = 0;
 	AngChk.prevCur = 0;
 	UI_Time.tmp3_ms = 1000;
-	UI_Time.tmp4_ms = 2000;
+	UI_Time.tmp4_ms = 2000; //check time
 	MotorDrv_SetDirection(MDD_CCW);
 	AngChk.gap = amSensitivity[AMD_FLEXTION][Setup3.amSens-1][AMVT_GAP];
 	MotorDrv_SetFlagRunOne(0);
@@ -21644,7 +21828,7 @@ LRESULT UI_AngleMeasure_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 		UI_AngleMeasure_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		case RID_ANG_BTN_LEFT:
 			switch(lParam) {
 			case BN_CLICKED: // push 
@@ -21911,7 +22095,7 @@ LRESULT UI_AutoAngleValue_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
 		UI_AutoAngleValue_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		case RID_LP_BTN_LEFT:
 			switch(lParam) {
 			case BN_CLICKED: // push 
@@ -22087,7 +22271,7 @@ LRESULT UI_AngleBtnStep_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 		UI_AngleBtnStep_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		case RID_LP_BTN_LEFT:
 			switch(lParam) {
 			case BN_CLICKED: // push 
@@ -22272,7 +22456,7 @@ LRESULT UI_AngleMeaSens_WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 		UI_AngleMeaSens_Init();
 		break;
 	case WM_COMMAND:
-		switch(wParam) { // wParamÀÇ word low¿¡ id³¯¶ó¿È
+		switch(wParam) { // wParamï¿½ï¿½ word lowï¿½ï¿½ idï¿½ï¿½ï¿½ï¿½ï¿½
 		case RID_LP_BTN_LEFT:
 			switch(lParam) {
 			case BN_CLICKED: // push 
@@ -22386,7 +22570,7 @@ int UI_CheckMotorStatus(void)
 	return 1;
 }
 
-//½Ã½ºÅÛ ÃÊ±âÈ­³ª È¨À¸·Î ÀÌµ¿ÇÏ´Â ÇÁ·Î±×·¥½º¹Ù ±¸Çö
+//ï¿½Ã½ï¿½ï¿½ï¿½ ï¿½Ê±ï¿½È­ï¿½ï¿½ È¨ï¿½ï¿½ï¿½ï¿½ ï¿½Ìµï¿½ï¿½Ï´ï¿½ ï¿½ï¿½ï¿½Î±×·ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 void UI_AniProgress(uint32_t pos)
 {
 	switch (pos%10) {
@@ -22483,13 +22667,13 @@ void UI_Timer(uint16_t nIDEvent)
 {
 	
 	switch (nIDEvent) {
-	case TIMER_ID_0:    //init ½Ã½ºÅÛ ÃÊ±âÈ­ ÇÁ·Î±×·¡½º¹Ù Ç¥Çö
+	case TIMER_ID_0:    //init ï¿½Ã½ï¿½ï¿½ï¿½ ï¿½Ê±ï¿½È­ ï¿½ï¿½ï¿½Î±×·ï¿½ï¿½ï¿½ï¿½ï¿½ Ç¥ï¿½ï¿½
 		//UI_SystemInit_Timer();
 		break;
-	case TIMER_ID_1:    //loading È¨ÀÎÀ¸·Î ÀÌµ¿ÇÒ¶§ Ç¥Çö
+	case TIMER_ID_1:    //loading È¨ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ìµï¿½ï¿½Ò¶ï¿½ Ç¥ï¿½ï¿½
 		UI_Loading_Timer(0);
 		break;
-	case TIMER_ID_2:    //playing ±¸µ¿ÇÒ¶§ ½ÇÇà
+	case TIMER_ID_2:    //playing ï¿½ï¿½ï¿½ï¿½ï¿½Ò¶ï¿½ ï¿½ï¿½ï¿½ï¿½
 		if (RunWnd.time > 0){
 			if(RunWnd.play != UI_RUN_MODE_HOME){
 				if(Timer_sec >= 6){	//1min
