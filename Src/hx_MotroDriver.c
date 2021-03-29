@@ -36,11 +36,11 @@ source
 /* Private define ------------------------------------------------------------*/
 #define HOME_SW						HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0)
 #define MOTOR_MAX_ANGLE						142
-#define MOTOR_MIN_ANGLE						-6
+#define MOTOR_MIN_ANGLE						-13//-6
 #define MOTOR_OVER_CUR_CHK_CNT				3//20//200(5sec) : 1 is 10ms
-#define MOTOR_SENS_CUR_CHK_CNT				5//100
+#define MOTOR_SENS_CUR_CHK_CNT				1//4//100
 #define MOTOR_DRV_IC_CHK_CNT				100//5000 //10ms unit
-#define MOTOR_DRV_PWM_VALUE_MAX				20000
+#define MOTOR_DRV_PWM_VALUE_MAX				14000//20000
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -198,7 +198,7 @@ void MotorDrv_CheckSensitivityCurrentOnStandby()
 		}
 	}
 	
-	if (MDrvInfo.standbyChkCnt > 4) {
+	if (MDrvInfo.standbyChkCnt > 1) {
 		MDrvInfo.f.b.standbyCurrent = 1;
 		MDrvInfo.SensChk.runOne = 0;
 	}
@@ -789,7 +789,7 @@ void MotorDrv_Process(void)
 	MotorDrv_CheckOverCurrent();
 	MotorDrv_CheckSensitivityCurrent();
 	MotorDrv_CheckFaultAction();
-	MotorDrv_GetLimitSwitchStatus();
+	MotorDrv_GetLimitSwitchStatus(); //201026bg
 	MotorDrv_CheckSensitivityCurrentOnStandby();
 	#endif
 }
