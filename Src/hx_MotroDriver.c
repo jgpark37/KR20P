@@ -773,6 +773,11 @@ uint8_t MotorDrv_SensChk_GetGap(void)
 	return MDrvInfo.SensChk.gap;
 }
 
+uint32_t MotorDrv_GetRawCurrent(void)
+{
+	return ADC_rms;
+}
+
 // run every 10ms
 void MotorDrv_Process(void)
 {

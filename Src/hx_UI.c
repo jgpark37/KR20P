@@ -146,7 +146,7 @@ source
 #define USE_ANG_MEA_METHOD_TYPE1		//pjg++191106 : when down - add offset at 110 deg over, when up - add offset all deg
 //#define USE_ANG_MEA_METHOD_TYPE2		//pjg++191106 : when down - add offset at 110 deg over, when up - add offset all deg
 //#define USE_ANG_MEA_METHOD_TYPE3		//pjg++210324 : torque fomular method
-
+#define USE_GET_RAW_DATA_FOR_TEST
 //#define USE_MOTOR_RUN_TEST			
 
 //
@@ -3260,8 +3260,6 @@ void UI_DisplayDecimal(char font, uint8_t pos, int x, int y, short num)
 			UI_DisplayNumber(font, x+DISP_NUM_9P_10_POS*3, y, temp3, pos+0);
 		}
 	}
-	else if (num < -99) {
-	}          
 	else if (num > 99) {
 		temp = num%100;
 		temp2 = temp%10;
@@ -3294,7 +3292,9 @@ void UI_DisplayDecimal(char font, uint8_t pos, int x, int y, short num)
 		}
 	}
 	else {
-		if (num < -9) {
+		if (num < -99) {
+		}		   
+		else if (num < -9) {
 			temp = num%10;
 			UI_DisplayNumber(font, x, y, -1, pos+2);
 			if (font == UI_DISP_NUM_FNT5) {
@@ -3350,8 +3350,6 @@ void UI_DisplayDecimalSel(char font, uint8_t pos, int x, int y, short num, uint8
 			UI_DisplayNumber(font, x+DISP_NUM_9P_1_POS+DISP_NUM_9P_10_POS, y, temp3, pos+0);
 		}
 	}
-	else if (num < -99) {
-	}          
 	else if (num > 99) {
 		temp = num%100;
 		temp2 = temp%10;
@@ -3389,7 +3387,9 @@ void UI_DisplayDecimalSel(char font, uint8_t pos, int x, int y, short num, uint8
 		}
 	}
 	else {
-		if (num < -9) {
+		if (num < -99) {
+		}		   
+		else if (num < -9) {
 			temp = num%10;
 			UI_DisplayNumber(font, x, y, -1, pos+2);
 			if (font == UI_DISP_NUM_FNT5) {
@@ -3452,8 +3452,6 @@ void UI_DisplayDecimal_5Unit(char font, uint8_t pos, int x, int y, short num)
 			UI_DisplayNumber(font, x+DISP_NUM_5R_9P_1_POS, y, temp2, pos+0);
 		}
 	}
-	else if(num < -999){
-	}
 	else if (num > 999) {
 		temp3 = num%1000;
 		temp = temp3%100;
@@ -3478,8 +3476,6 @@ void UI_DisplayDecimal_5Unit(char font, uint8_t pos, int x, int y, short num)
 			UI_DisplayNumber(font, x+DISP_NUM_5R_9P_1_POS, y, temp2, pos+0);
 		}
 	}
-	else if (num < -99) {
-	}          
 	else if (num > 99) {
 		temp = num%100;
 		temp2 = temp%10;
@@ -3541,7 +3537,11 @@ void UI_DisplayDecimal_5Unit(char font, uint8_t pos, int x, int y, short num)
 		}
 	}
 	else {
-		if (num < -9) {
+		if(num < -999){
+		}
+		else if (num < -99) {
+		}		   
+		else if (num < -9) {
 			temp = num%10;
 			//UI_DisplayNumber(font, x, y, 10, pos+2);
 			if (dispNum.preUnitNum[pos] != 0) {
@@ -3617,9 +3617,9 @@ void UI_DisplayDecimal_3UnitZero(char font, uint8_t pos, int x, int y, short num
 	else if (num > 999) {
 	}
 	else if(num < -9999){
-		}
+	
 	else if(num < -999){
-		}
+	}
 
 }
 
@@ -20865,7 +20865,7 @@ void UI_AngleMeasure_CheckCurrentSensitivity(void)
 		ftemp2 = ((float)1.0-AngChk.alpha)*AngChk.prev;
 		AngChk.prev = ftemp+ftemp2;
 		AngChk.prevCur = (uint32_t)(AngChk.prev);
-		#endif
+		#ifndef USE_GET_RAW_DATA_FOR_TEST
 		if (AngChk.runOne < 100) {
 			AngChk.runOne++;
 			AngChk.upOffset = cur-AngChk.prevCur;
@@ -20878,6 +20878,8 @@ void UI_AngleMeasure_CheckCurrentSensitivity(void)
 			}
 			return;
 		}
+		#endif
+		#endif
 		/*
 		if (test.cnt < TEST_BUF_SIZE/2) {
 			test.buf[test.cnt] = ftemp;
@@ -20895,13 +20897,14 @@ void UI_AngleMeasure_CheckCurrentSensitivity(void)
 		//AngChk.prev = (float)cur;
 	//	return;
 	//}
-
+#ifndef USE_GET_RAW_DATA_FOR_TEST
 	if (AngChk.angle > RunWnd.angle) {
 		if ((AngChk.angle - RunWnd.angle) < ANGLE_MIN_DEG) return;
 	}
 	else {
 		if ((RunWnd.angle- AngChk.angle) < ANGLE_MIN_DEG) return;
 	}
+#endif
 
 #if defined(USE_ANG_MEA_METHOD_TYPE3)
 	//AngChk.diff = (int16_t)((float)AngChk.prevCur*cosf((float)RunWnd.angle)) + (Setup3.amSens*1000) * (int16_t)((float)AngChk.upOffset/100.0); //AngChk.upOffset : link length
@@ -20930,15 +20933,17 @@ void UI_AngleMeasure_CheckCurrentSensitivity(void)
         //ftemp2 = 0;
 	}
 	
+#elif defined(USE_ANG_MEA_METHOD_TYPE1)
+	AngChk.diff = cur-AngChk.prevCur - AngChk.upOffset;
 #else
-	//AngChk.diff = cur-AngChk.prevCur - AngChk.upOffset;
 	ftemp2 = (float)cur - AngChk.prev - (float)AngChk.upOffset;
 #endif
 
+#ifdef USE_GET_RAW_DATA_FOR_TEST
 #if 0 //data collect, current monitor
 	//temp = MotorDrv_GetCurrent();
 	if (AngChk.runOne != 0 && UI_Time.tmp4_ms == 0) {
-		ConvertULong2String((uint32_t)cur, (uint8_t *)buf, 11);
+		ConvertULong2String((uint32_t)MotorDrv_GetRawCurrent(), (uint8_t *)buf, 11);
 		uart_putstring3((char *)buf);
 		uart_putchar3(',');
 		ConvertULong2String((int16_t)AngChk.prevCur, (uint8_t *)buf, 11);
@@ -20952,9 +20957,21 @@ void UI_AngleMeasure_CheckCurrentSensitivity(void)
 		uart_putchar3('\r');
 		uart_putchar3('\n');
 	}
+#else //get raw current, pos, deg
+	ConvertULong2String((uint32_t)MotorDrv_GetRawCurrent(), (uint8_t *)buf, 11);
+	uart_putstring3((char *)buf);
+	uart_putchar3(',');
+	ConvertULong2String((int32_t)MotorDrv_GetEncoderVaue(), (uint8_t *)buf, 11);
+	uart_putstring3((char *)buf);
+	uart_putchar3(',');
+	ConvertULong2String((int16_t)RunWnd.angle, buf, 11);
+	uart_putstring3((char *)buf);
+	uart_putchar3('\r');
+	uart_putchar3('\n');
+#endif
 #endif
 
-#ifdef USE_ANG_MEA_METHOD_TYPE1
+#if defined(USE_ANG_MEA_METHOD_TYPE1)
 #elif defined(USE_ANG_MEA_METHOD_TYPE2)
 	if (MotorDrv_GetDirection() == MDD_CCW) {
 		AngChk.temp = (short)(0.0016 * (float)RunWnd.angle * (float)RunWnd.angle +
@@ -20967,7 +20984,7 @@ void UI_AngleMeasure_CheckCurrentSensitivity(void)
 		AngChk.diff += (AngChk.temp-5);
 	}
 #elif defined(USE_ANG_MEA_METHOD_TYPE3)
-#else
+#else defined(USE_ANG_MEA_METHOD_TYPE4)
 	if (MotorDrv_GetDirection() == MDD_CCW) {
 		//AngChk.temp = (short)(0.00002 * (float)RunWnd.angle * (float)RunWnd.angle * (float)RunWnd.angle +
 		//		-0.002 * (float)RunWnd.angle * (float)RunWnd.angle +
@@ -20988,6 +21005,7 @@ void UI_AngleMeasure_CheckCurrentSensitivity(void)
 		AngChk.temp *= AngChk.upOffset;
 		AngChk.gap = AngChk.gapBk + AngChk.temp;
 	}
+#else
 #endif
 	//ConvertULong2String((int16_t)AngChk.diff, (uint8_t *)buf, 11);
 	//uart_putstring3((char *)buf);
@@ -20997,7 +21015,7 @@ void UI_AngleMeasure_CheckCurrentSensitivity(void)
 	//uart_putchar3('\r');
 	//uart_putchar3('\n');
 	
-#if 1	//trigger test
+#if 0	//trigger test
 	if (MotorDrv_GetDirection() == MDD_CCW) {
 		ftemp = cosf(((float)(RunWnd.angle-10)*3.14f)/180.0f)*1.0f;
 		//if (AngChk.diff >= (Setup3.amSens - (int)ftemp)) { 
@@ -21105,7 +21123,8 @@ void UI_AngleMeasure_CheckCurrentSensitivity(void)
 	}
 #endif
 	
-#if 0 //ori code
+#if defined(USE_ANG_MEA_METHOD_TYPE1)
+ //ori code
 	if (AngChk.diff > AngChk.gap) {
 		AngChk.sameCnt++;
 		if (AngChk.sameCnt > 3 && UI_Time.tmp3_ms == 0) {
@@ -21213,11 +21232,13 @@ void UI_AngleMeasure_Process(void)
 				MotorDrv_SetTargetPosition(AngleWnd.exAngle);
 				UI_AngleMeasure_DispMeaValue();
 				UI_AngleMeasure_SetAngle_Pic(RunWnd.angle, AngleWnd.flAngle);
+				#ifdef USE_GET_RAW_DATA_FOR_TEST
+				UI_Time.tmp3_ms = 0;//1000;
+				UI_Time.tmp4_ms = 0;//2000;
+				#else
 				UI_Time.tmp3_ms = 1000;
-				//#if defined(USE_ANG_MEA_METHOD_TYPE3)
-				//#else
 				UI_Time.tmp4_ms = 2000;
-				//#endif
+				#endif
 				MotorDrv_SetDirection(MDD_CW);
 				MotorDrv_SetFlagRunOne(0);
 				MotorDrv_MoveUp();
@@ -21382,13 +21403,23 @@ void UI_AngleMeasure_OnBnClickedBtnAutoCheckAngle(void)
 	//KeyDrv_Disable(1);	
 	//AngChk.ext = AngleWnd.exAngle;
 	//AngChk.flex = AngleWnd.flAngle;
+	#ifdef USE_GET_RAW_DATA_FOR_TEST
+	AngleWnd.exAngle = -5;//ANG_CHK_ANGLE_MIN;
+	AngleWnd.flAngle = 140;//ANG_CHK_ANGLE_MAX;
+	#else
 	AngleWnd.exAngle = ANG_CHK_ANGLE_MIN;
-	AngleWnd.flAngle = 120;//ANG_CHK_ANGLE_MAX;
+	AngleWnd.flAngle = ANG_CHK_ANGLE_MAX;
+	#endif
 	AngChk.runOne = 0;
 	AngChk.mode = 0;
 	AngChk.prevCur = 0;
+	#ifdef USE_GET_RAW_DATA_FOR_TEST
 	UI_Time.tmp3_ms = 0;//1000;
-	UI_Time.tmp4_ms = 150;//2000; //check time
+	UI_Time.tmp4_ms = 0;//150;//2000; //check time
+	#else
+	UI_Time.tmp3_ms = 1000;
+	UI_Time.tmp4_ms = 2000; //check time
+	#endif
 	MotorDrv_SetDirection(MDD_CCW);
 	AngChk.gap = amSensitivity[AMD_FLEXTION][Setup3.amSens-1][AMVT_GAP];
 	MotorDrv_SetFlagRunOne(0);

@@ -244,6 +244,7 @@ extern float MotorDrv_SensChk_GetAlpha(void);
 extern void MotorDrv_SensChk_SetGap(uint8_t value);
 extern uint8_t MotorDrv_SensChk_GetGap(void);
 extern void MotorDrv_Enable(void);
+extern uint32_t MotorDrv_GetRawCurrent(void);
 extern void MotorDrv_Init2(void);
 extern void MotorDrv_Thread(void);
 #endif //_MOTOR_DRIVER_H_
