@@ -139,11 +139,11 @@ source
 //
 #define ANG_CHK_ANGLE_MAX			135
 #define ANG_CHK_ANGLE_MIN			0
-#define ANG_MEA_TOTAL_COUNT			1
+#define ANG_MEA_TOTAL_COUNT			3//1
 #define ANG_MEA_MAX_SENS_VALUE		1
 #define ANG_MEA_MAX_SENS_STEP		1
 #define ANG_MEA_NO_GRAVITY_ANGLE		10
-#define USE_ANG_MEA_METHOD_TYPE1		//pjg++191106 : when down - add offset at 110 deg over, when up - add offset all deg
+//#define USE_ANG_MEA_METHOD_TYPE1		//pjg++191106 : when down - add offset at 110 deg over, when up - add offset all deg
 //#define USE_ANG_MEA_METHOD_TYPE2		//pjg++191106 : when down - add offset at 110 deg over, when up - add offset all deg
 //#define USE_ANG_MEA_METHOD_TYPE3		//pjg++210324 : torque fomular method
 #define USE_GET_RAW_DATA_FOR_TEST
@@ -3617,8 +3617,6 @@ void UI_DisplayDecimal_3UnitZero(char font, uint8_t pos, int x, int y, short num
 	else if (num > 999) {
 	}
 	else if(num < -9999){
-	
-	else if(num < -999){
 	}
 
 }
@@ -3929,7 +3927,7 @@ void UI_SetSensitivityByCalibrationValue(uint16_t  __packed value[][MS_SPEED_MAX
 				Motor_OverCurTbl[SL_LEVEL_MAX-i-1][j] = value[0][j] + (uint16_t)((float)11.333*(float)(i+1)*(float)(i+1) +
 														93.627*(float)(i+1) + -24.9);
 			}
-			else {//if (j == 2) {
+			else if (j == 2) {
 				Motor_OverCurTbl[SL_LEVEL_MAX-i-1][j] = value[0][j] + (uint16_t)((float)5.2667*(float)(i+1)*(float)(i+1) +
 														139.6*(float)(i+1) + -37.8);
 			}
@@ -6346,6 +6344,7 @@ void UI_Loading_Timer(uint16_t nIDEvent)
 		MotorDrv_SetTargetPosition(Setup3.IPos);
 		MotorDrv_StopHome();
 		App_KillTimer(TIMER_ID_1);
+#endif
 		if(SpdTmWnd_bk_speed < 3){
 			SpdTmWnd.speed = SpdTmWnd_bk_speed;
 		}
@@ -20984,7 +20983,7 @@ void UI_AngleMeasure_CheckCurrentSensitivity(void)
 		AngChk.diff += (AngChk.temp-5);
 	}
 #elif defined(USE_ANG_MEA_METHOD_TYPE3)
-#else defined(USE_ANG_MEA_METHOD_TYPE4)
+#elif defined(USE_ANG_MEA_METHOD_TYPE4)
 	if (MotorDrv_GetDirection() == MDD_CCW) {
 		//AngChk.temp = (short)(0.00002 * (float)RunWnd.angle * (float)RunWnd.angle * (float)RunWnd.angle +
 		//		-0.002 * (float)RunWnd.angle * (float)RunWnd.angle +
