@@ -145,7 +145,7 @@ source
 #define ANG_MEA_NO_GRAVITY_ANGLE		10
 #define USE_ANG_MEA_METHOD_TYPE1		//pjg++191106 : when down - add offset at 110 deg over, when up - add offset all deg
 //#define USE_ANG_MEA_METHOD_TYPE2		//pjg++191106 : when down - add offset at 110 deg over, when up - add offset all deg
-#define USE_ANG_MEA_METHOD_TYPE3		//pjg++210324 : torque fomular method
+//#define USE_ANG_MEA_METHOD_TYPE3		//pjg++210324 : torque fomular method
 
 //#define USE_MOTOR_RUN_TEST			
 
@@ -20801,7 +20801,8 @@ void UI_AngleMeasure_CheckCurrentSensitivity(void)
 	uint32_t cur;//, result;
 	static float ftemp, ftemp2;
 	uint8_t buf[30];
-	static uint32_t friction;
+	#ifdef USE_ANG_MEA_METHOD_TYPE3
+	uint32_t friction;
 	const float speed[MS_SPEED_MAX] = {
 		0.5,
 		0.8,
@@ -20809,6 +20810,7 @@ void UI_AngleMeasure_CheckCurrentSensitivity(void)
 		1.8,
 		2.8
 	};
+	#endif
 	//uint8_t temp;
 	//
 	//friction function parma
@@ -20817,14 +20819,15 @@ void UI_AngleMeasure_CheckCurrentSensitivity(void)
 	//c	364.3
 	
 	
-	if (UI_Time.tmp2_ms == 0) { //run every 10ms
-		UI_Time.tmp2_ms = 10;
+	if (UI_Time.tmp2_ms != 0) { //run every 10ms
+		return;
 	}
-	else return;
+	UI_Time.tmp2_ms = 10;
 
 	cur = MotorDrv_GetCurrent();
 	AngChk.cur = cur;
-	if (AngChk.runOne == 0 || UI_Time.tmp4_ms != 0) {
+	//if (AngChk.runOne == 0 || UI_Time.tmp4_ms != 0) {
+	if (UI_Time.tmp4_ms != 0) {
 		#ifdef USE_ANG_MEA_METHOD_TYPE3
 		//if (AngChk.runOne == 0) {
 			AngChk.prevCur = cur;//(uint32_t)((float)cur*cosf((float)RunWnd.angle));
@@ -20832,10 +20835,12 @@ void UI_AngleMeasure_CheckCurrentSensitivity(void)
 		#else
 		AngChk.prevCur = cur;
 		#endif
-		AngChk.runOne++;// = 1;
+		//AngChk.runOne++;// = 1;
 		AngChk.prev = (float)cur;
 		AngChk.angle = RunWnd.angle;
 		AngChk.sameCnt = 0;
+		UI_Time.tmp3_ms = 0;
+		AngChk.temp = 0;
 		//if (MotorDrv_GetDirection() == MDD_CCW) {
 			//AngChk.y = (short)(0.00002 * 134 * 134 * 134 +
 			//		-0.002 * 134 * 134 +
@@ -20861,6 +20866,18 @@ void UI_AngleMeasure_CheckCurrentSensitivity(void)
 		AngChk.prev = ftemp+ftemp2;
 		AngChk.prevCur = (uint32_t)(AngChk.prev);
 		#endif
+		if (AngChk.runOne < 100) {
+			AngChk.runOne++;
+			AngChk.upOffset = cur-AngChk.prevCur;
+			if (AngChk.runOne >= 100) {
+				uart_putstring3((char *)"offset: ");
+				ConvertULong2String((int16_t)AngChk.upOffset, (uint8_t *)buf, 11);
+				uart_putstring3((char *)buf);
+				uart_putchar3('\r');
+				uart_putchar3('\n');
+			}
+			return;
+		}
 		/*
 		if (test.cnt < TEST_BUF_SIZE/2) {
 			test.buf[test.cnt] = ftemp;
@@ -20890,21 +20907,35 @@ void UI_AngleMeasure_CheckCurrentSensitivity(void)
 	//AngChk.diff = (int16_t)((float)AngChk.prevCur*cosf((float)RunWnd.angle)) + (Setup3.amSens*1000) * (int16_t)((float)AngChk.upOffset/100.0); //AngChk.upOffset : link length
 	//AngChk.diff = (uint32_t)((float)cur*cosf(((float)RunWnd.angle*3.14)/180.0));
 	friction = (uint32_t)(9.2888*(float)speed[SpdTmWnd.speed-1]*(float)speed[SpdTmWnd.speed-1] + 
-			21.194*(float)speed[SpdTmWnd.speed-1] + 
-			364.3);
-	ftemp = cosf(((float)RunWnd.angle*3.14159265358979f)/180.0);
-	ftemp2 = (float)cur - (float)friction;
-	AngChk.diff = (int32_t)cur - (int32_t)friction;// - (int32_t)(ftemp*(float)48.5);
+						21.194*(float)speed[SpdTmWnd.speed-1] + 
+						364.3);
+	if (MotorDrv_GetDirection() == MDD_CCW) {
+		//ftemp = cosf(((float)RunWnd.angle*3.14159265358979f)/180.0);
+		ftemp = 2.0*pow(10.0, -7.0)*pow((float)(RunWnd.angle-10), 4.0) + 
+				-3.4*pow(10.0, -5.0)*pow((float)(RunWnd.angle-10), 3.0) +
+				0.0025*pow((float)(RunWnd.angle-10), 2.0) +
+				-0.034*(float)(RunWnd.angle-10) +
+				-14.629;
+	}
+	else {
+		ftemp = -3.0*pow(10.0, -8.0)*pow((float)(RunWnd.angle-10), 4.0) + 
+				3.1*pow(10.0, -5.0)*pow((float)(RunWnd.angle-10), 3.0) +
+				-0.007*pow((float)(RunWnd.angle-10), 2.0) +
+				0.1282*(float)(RunWnd.angle-10) +
+				21.968;
+	}
+	AngChk.diff = (int32_t)cur - (int32_t)friction - (int32_t)(ftemp);
 	if (AngChk.diff < -100) {
 		//MotorDrv_Release();
-        ftemp2 = 0;
+        //ftemp2 = 0;
 	}
 	
 #else
-	AngChk.diff = cur-AngChk.prevCur;
+	//AngChk.diff = cur-AngChk.prevCur - AngChk.upOffset;
+	ftemp2 = (float)cur - AngChk.prev - (float)AngChk.upOffset;
 #endif
 
-#if 1 // current monitor
+#if 0 //data collect, current monitor
 	//temp = MotorDrv_GetCurrent();
 	if (AngChk.runOne != 0 && UI_Time.tmp4_ms == 0) {
 		ConvertULong2String((uint32_t)cur, (uint8_t *)buf, 11);
@@ -20958,8 +20989,124 @@ void UI_AngleMeasure_CheckCurrentSensitivity(void)
 		AngChk.gap = AngChk.gapBk + AngChk.temp;
 	}
 #endif
-
-	if (0) {//AngChk.diff > AngChk.gap) {
+	//ConvertULong2String((int16_t)AngChk.diff, (uint8_t *)buf, 11);
+	//uart_putstring3((char *)buf);
+	//uart_putchar3(',');
+	//ConvertULong2String((int16_t)RunWnd.angle, buf, 11);
+	//uart_putstring3((char *)buf);
+	//uart_putchar3('\r');
+	//uart_putchar3('\n');
+	
+#if 1	//trigger test
+	if (MotorDrv_GetDirection() == MDD_CCW) {
+		ftemp = cosf(((float)(RunWnd.angle-10)*3.14f)/180.0f)*1.0f;
+		//if (AngChk.diff >= (Setup3.amSens - (int)ftemp)) { 
+		if (ftemp2 >= (float)Setup3.amSens - ftemp) {
+			AngChk.sameCnt++;
+			#if 0
+			ConvertULong2String((int16_t)UI_Time.tmp3_ms, (uint8_t *)buf, 11);
+			uart_putstring3((char *)buf);
+			uart_putchar3(',');
+			ConvertULong2String((int16_t)RunWnd.angle, (uint8_t *)buf, 11);
+			uart_putstring3((char *)buf);
+			uart_putchar3(',');
+			ConvertULong2String((int16_t)AngChk.sameCnt, (uint8_t *)buf, 11);
+			uart_putstring3((char *)buf);
+			uart_putchar3(',');
+			ConvertULong2String(20-(int16_t)(17.0f*ftemp), (uint8_t *)buf, 11);
+			uart_putstring3((char *)buf);
+			uart_putchar3('_');
+			#endif
+			//ftemp = cosf(((float)(RunWnd.angle-10)*3.14)/180.0);
+			if (UI_Time.tmp3_ms == 0) {
+				if (AngChk.sameCnt > 20-(int16_t)(17.0f*ftemp)) {
+					if (RunWnd.angle - AngChk.temp > 2) {
+						uart_putstring3((char *)"set flex mea: ");
+						ConvertULong2String((int16_t)(ftemp2*10), (uint8_t *)buf, 11);
+						uart_putstring3((char *)buf);
+						uart_putchar3(',');
+						ConvertULong2String((int16_t)AngChk.sameCnt, (uint8_t *)buf, 11);
+						uart_putstring3((char *)buf);
+						uart_putchar3(',');
+						ConvertULong2String((int16_t)RunWnd.angle, (uint8_t *)buf, 11);
+						uart_putstring3((char *)buf);
+						uart_putchar3('\r');
+						uart_putchar3('\n');
+						AngChk.sameCnt = 0;
+						UI_Time.tmp3_ms = 500;//1000;
+						AngChk.temp = RunWnd.angle;
+					}
+				}
+			}
+			else {
+				AngChk.sameCnt = 0;
+			}
+		}
+	}
+	else {
+		if (RunWnd.angle > 50) {
+			ftemp = cosf(((float)(RunWnd.angle)*3.14f)/180.0f)*5.0f;
+			ftemp = 9+ftemp;
+		}
+		else {
+			ftemp = cosf(((float)(RunWnd.angle-35)*3.14f)/180.0f)*5.0f;
+			ftemp = 9+ftemp;
+		}
+		
+		//if (AngChk.diff >= (Setup3.amSens - (int)ftemp)) { 
+		if (ftemp2 >= (float)Setup3.amSens - ftemp) {
+			AngChk.sameCnt++;
+			#if 0
+			ConvertULong2String((int16_t)UI_Time.tmp3_ms, (uint8_t *)buf, 11);
+			uart_putstring3((char *)buf);
+			uart_putchar3(',');
+			ConvertULong2String((int16_t)RunWnd.angle, (uint8_t *)buf, 11);
+			uart_putstring3((char *)buf);
+			uart_putchar3(',');
+			ConvertULong2String((int16_t)AngChk.sameCnt, (uint8_t *)buf, 11);
+			uart_putstring3((char *)buf);
+			uart_putchar3(',');
+			ConvertULong2String(20-(int16_t)(17.0f*ftemp), (uint8_t *)buf, 11);
+			uart_putstring3((char *)buf);
+			uart_putchar3('_');
+			#endif
+			//ftemp = cosf(((float)(RunWnd.angle-10)*3.14)/180.0);
+			if (UI_Time.tmp3_ms == 0) {
+				if (RunWnd.angle > 50) {
+					ftemp = 0;//20-ftemp*17;
+				}
+				else {
+					ftemp = 0;//20-ftemp*17;
+				}
+				
+				if (AngChk.sameCnt > 20-(int16_t)(17.0f*ftemp)) {
+					if (RunWnd.angle - AngChk.temp > 2) {
+						uart_putstring3((char *)"set ext mea: ");
+						ConvertULong2String((int16_t)AngChk.diff + (int16_t)ftemp, (uint8_t *)buf, 11);
+						uart_putstring3((char *)buf);
+						uart_putchar3(',');
+						ConvertULong2String((int16_t)AngChk.sameCnt, (uint8_t *)buf, 11);
+						uart_putstring3((char *)buf);
+						uart_putchar3(',');
+						ConvertULong2String((int16_t)RunWnd.angle, (uint8_t *)buf, 11);
+						uart_putstring3((char *)buf);
+						uart_putchar3('\r');
+						uart_putchar3('\n');
+						AngChk.sameCnt = 0;
+						UI_Time.tmp3_ms = 500;//1000;
+						AngChk.temp = RunWnd.angle;
+					}
+				}
+			}
+			else {
+				AngChk.sameCnt = 0;
+			}
+		}
+	}
+#endif
+	
+#if 0 //ori code
+	if (AngChk.diff > AngChk.gap) {
 		AngChk.sameCnt++;
 		if (AngChk.sameCnt > 3 && UI_Time.tmp3_ms == 0) {
 			MotorDrv_SetFlagSensCurrent(0);
@@ -20967,18 +21114,18 @@ void UI_AngleMeasure_CheckCurrentSensitivity(void)
 			UI_Time.tmp3_ms = 2000;
 			if (MotorDrv_GetDirection() == MDD_CCW) {
 				AngleWnd.flAngle = RunWnd.angle;
-				uart_putstring3((char *)"set flex mea\r\n");
 			}
 			else {
-				if ((AngleWnd.flAngle - RunWnd.angle) > ANGLE_MIN_GAP) //pjg++191028 : prevent vibration action
+				if ((AngleWnd.flAngle - RunWnd.angle) > ANGLE_MIN_GAP) { //pjg++191028 : prevent vibration action
 					AngleWnd.exAngle = RunWnd.angle;
-					uart_putstring3((char *)"set ext mea\r\n");
+				}
 			}
 		}
 	}
 	else {
 		if (AngChk.sameCnt) AngChk.sameCnt--;
 	}
+#endif
 }
 
 void UI_AngleMeasure_DispMeaValue(void)
@@ -21202,6 +21349,7 @@ void UI_AngleMeasure_OnBnClickedBtnAutoCheckAngle(void)
 		//UI_PopupAngleMeaLowPos_Create();
 		//return;
 	//}
+	SpdTmWnd.speed = 3; //pjg++210330
 	MotorDrv_Run();
 	UI_SetFunRunMode(UI_FRM_NORMAL);
 	//RunWnd.time = SpdTmWnd.time;
@@ -21239,8 +21387,8 @@ void UI_AngleMeasure_OnBnClickedBtnAutoCheckAngle(void)
 	AngChk.runOne = 0;
 	AngChk.mode = 0;
 	AngChk.prevCur = 0;
-	UI_Time.tmp3_ms = 1000;
-	UI_Time.tmp4_ms = 2000; //check time
+	UI_Time.tmp3_ms = 0;//1000;
+	UI_Time.tmp4_ms = 150;//2000; //check time
 	MotorDrv_SetDirection(MDD_CCW);
 	AngChk.gap = amSensitivity[AMD_FLEXTION][Setup3.amSens-1][AMVT_GAP];
 	MotorDrv_SetFlagRunOne(0);
