@@ -148,7 +148,7 @@ char *pBtnInfo[] = {
 	"\r",						"\r",
 	//"i opt.bmp,290,6\r",		"i optp.bmp,290,6\r",	//pjg++190805 auto angle check button
 	//"i p.bmp,235,1\r",		"i np.bmp,235,1\r",	//pjg++190805 auto angle play button
-	//SystemSetup main
+	//SystemSetup-main
 	"i sycl.bmp,428,4\r",		"i psycl.bmp,428,4\r",
 	"i susb.bmp,8,222\r",		"i susbp.bmp,8,222\r",
 	"i susbk.bmp,8,222\r",		"i susbpk.bmp,8,222\r",
@@ -170,7 +170,7 @@ char *pBtnInfo[] = {
 	"i ssko.bmp,126,169\r",		"i pssko.bmp,126,169\r", //kor
 	"i ssen.bmp,223,169\r",		"i pssen.bmp,223,169\r", //eng
 	"i ssch.bmp,379,169\r",		"i pssch.bmp,379,169\r", //china
-	"i nbrchk.bmp,420,180\r",		"i nbrchk.bmp,420,180\r",  //quick
+	"i nbrchk.bmp,420,180\r",	"i nbrchk.bmp,420,180\r",  //quick
 	//PiLoad
 	"i left.bmp,44,222\r",		"i leftp.bmp,44,222\r",
 	"i pidel.bmp,397,2\r",    	"i ppidel.bmp,397,2\r",
