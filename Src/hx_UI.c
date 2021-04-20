@@ -394,7 +394,7 @@ const char COMPANY_t[COMPANY_LENGTH] = {"HEXAR SYSTEMS"};
 const char MODEL_t[MODEL_LENGTH] = {"KR20P"};
 //v1.1.0 : hw v2.1
 //v1.2.0 : hw v1.8 product 
-const uint8_t FW_VER[] = {'1', '2', '3','0'};//v1.0.Korea Gxx
+const uint8_t FW_VER[] = {'1', '2', '3','1'};//v1.0.Korea Gxx
 const uint8_t HW_VER[] = {'1', '8'};									
 const MYDATE_FMT CREATE_DATE = {2017, 3, 24};		//2017y, 3m, 24d
 const uint8_t CREATE_TIME[3] = {16, 31, 55};		//hour, min, sec
@@ -456,6 +456,8 @@ uint8_t BLVolTbl[BL_LEVEL_NUM];
 uint16_t Motor_OverCurTbl[SL_LEVEL_MAX][MS_SPEED_MAX];//MOTOR_OC_LEVEL_NUM];
 char keep;
 uint8_t  KeepSpd;
+int16_t KeepFlxAngle;
+int16_t KeepExtAngle;
 
 struct {
 	uint8_t num;//[UI_WND_DEPTH];
@@ -7383,6 +7385,8 @@ void UI_SpeedTime_OnBnClickedBtnRight(void)
 {
 	if (loginInfo.type == LIT_USER) ;//pjg--190725 UI_SavePIToEEPROM(PInfoWnd2.id, (uint8_t *)CommonBuf);
 
+	if (SpdTmWnd.time < 1) return;
+	
 	UI_Run_InitVar();
 	
 	//if((EXERCISE_INFO_NUM*19/20) < Exercise.addr && Exercise.addr < EXERCISE_INFO_NUM)
@@ -8522,7 +8526,11 @@ void UI_Run_OnBnClickedBtnLeft(void)
 		//if (loginInfo.type == LIT_USER) UI_SavePIToEEPROM(PInfoWnd2.id, (uint8_t *)CommonBuf);
 	}
 	RunWnd.play = 0;
-	if (keep == 0 ) KeepSpd = SpdTmWnd.time; //201120 bg
+	if (keep == 0 ) {
+		KeepSpd = SpdTmWnd.time; //201120 bg
+		KeepFlxAngle = AngleWnd.flAngle;
+		KeepExtAngle = AngleWnd.exAngle;
+	}
 	SpdTmWnd.time = RunWnd.time; //201020 bg
 	//SpdTmWnd.speed= RunWnd.speed; //201020 bg
 	API_ChangeHMenu(hParent, RID_RN_BTN_PAUSE, RID_RN_BTN_PLAY);
@@ -9907,8 +9915,11 @@ void UI_PopupRunComplete_OnBnClickedBtnOk(void)
 	//UI_Run_Create();
 	UI_LED_Control(LM_STAND_BY);
 
-	 if (keep == 1) SpdTmWnd.time = KeepSpd ; //201120 bg
-
+	 if (keep == 1) {
+	 	SpdTmWnd.time = KeepSpd ; //201120 bg
+	 	AngleWnd.flAngle = KeepFlxAngle;
+	 	AngleWnd.exAngle = KeepExtAngle;
+	 }
 
 	if (loginInfo.type == LIT_USER) {           // 201119 bg
 	UI_Exercise_SaveData(PInfoWnd2.id, 1, 0);
@@ -10788,7 +10799,7 @@ void UI_Setup_Init(void)
 
 	if(Setup2.language == LT_KOR)
 	{
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nssko.bmp,136,169\r");
+		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nssko.bmp,126,169\r");
 		App_SetButtonOption(RID_SYS_LG_KOR, BN_DISABLE);
 	}
 	//else if(Setup2.language == LT_CHINA)
