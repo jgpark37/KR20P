@@ -1503,6 +1503,9 @@
                 <name>$PROJ_DIR$\..\Src\usbh_diskio.c</name>
             </file>
             <file>
+                <name>$PROJ_DIR$\..\Src\usbh_platform.c</name>
+            </file>
+            <file>
                 <name>$PROJ_DIR$\..\Src\user_diskio.c</name>
             </file>
         </group>
@@ -1534,6 +1537,9 @@
             </file>
             <file>
                 <name>$PROJ_DIR$\..\Drivers\STM32F4xx_HAL_Driver\Src\stm32f4xx_hal_dma_ex.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\Drivers\STM32F4xx_HAL_Driver\Src\stm32f4xx_hal_exti.c</name>
             </file>
             <file>
                 <name>$PROJ_DIR$\..\Drivers\STM32F4xx_HAL_Driver\Src\stm32f4xx_hal_flash.c</name>

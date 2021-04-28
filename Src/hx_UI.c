@@ -49,6 +49,8 @@ source
 //#define USE_DEBUG_MODE
 #define USE_CALIB_ONLY_0KG					//pjg++200110
 //#define USE_QC_LIFE_TEST_SAVE_CUR			//pjg++200131 : current save to usb every 60min, run time max is 999min, display usb check message
+//#define USE_MEASUER_3TIMES
+
 //
 #define PATIENT_NUM					84
 #define PATIENT_INFO_SIZE			2048	// eeprom 256KByte
@@ -137,7 +139,11 @@ source
 //
 #define ANG_CHK_ANGLE_MAX			135
 #define ANG_CHK_ANGLE_MIN			0
+#ifdef USE_MEASUER_3TIMES
+#define ANG_MEA_TOTAL_COUNT			3
+#else
 #define ANG_MEA_TOTAL_COUNT			1
+#endif
 #define ANG_MEA_MAX_SENS_VALUE		1
 #define ANG_MEA_MAX_SENS_STEP		1
 #define ANG_MEA_NO_GRAVITY_ANGLE		10
@@ -454,10 +460,13 @@ char SVInfoBuf[8];
 uint8_t SndVolTbl[SND_LEVEL_NUM];
 uint8_t BLVolTbl[BL_LEVEL_NUM];
 uint16_t Motor_OverCurTbl[SL_LEVEL_MAX][MS_SPEED_MAX];//MOTOR_OC_LEVEL_NUM];
-char keep;
-uint8_t  KeepSpd;
-int16_t KeepFlxAngle;
-int16_t KeepExtAngle;
+struct { //pjg++210421
+	char flag;
+	uint16_t time;
+	uint8_t  speed;
+	int16_t flAngle;
+	int16_t exAngle;
+}keep;
 
 struct {
 	uint8_t num;//[UI_WND_DEPTH];
@@ -1646,8 +1655,8 @@ int UI_SaveParamToEEPROM(char *buf)
 		API_SetErrorCode(EC_EEP_MOUNT, EDT_DISP_HALT);
 		return 0;
 	}
-	if (EEPROMDisk_stat("KR20P", &fno) != 1) {
-		if (!EEPROMDisk_MkDir("KR20P")) {
+	if (EEPROMDisk_stat(EEPROMDISK_DIR, &fno) != 1) {
+		if (!EEPROMDisk_MkDir(EEPROMDISK_DIR)) {
 			EEPROMDisk_UnMount();
 			EEPROMDisk_UnLink();
 			API_SetErrorCode(EC_EEP_MKDIR, EDT_DISP_HALT);
@@ -2140,7 +2149,7 @@ int UI_Exercise_LoadLastData(uint32_t id, SAVE_EXERCISE_INFO_V2 *psei)
 		API_SetErrorCode(EC_EEP_MOUNT, EDT_DISP);
 		return -1;
 	}
-	if (EEPROMDisk_stat("0:/KR20P", &fno) != 1) {
+	if (EEPROMDisk_stat(EEPROMDISK_PATH, &fno) != 1) {
 		//not init
 		EEPROMDisk_UnMount();
 		EEPROMDisk_UnLink();
@@ -2278,7 +2287,7 @@ int UI_Exercise_SaveData(uint32_t id, uint8_t read, uint16_t p_pos)
 		API_SetErrorCode(EC_EEP_MOUNT, EDT_DISP);
 		return -1;
 	}
-	if (EEPROMDisk_stat("0:/KR20P", &fno) != 1) {
+	if (EEPROMDisk_stat(EEPROMDISK_PATH, &fno) != 1) {
 		//not init
 		EEPROMDisk_UnMount();
 		EEPROMDisk_UnLink();
@@ -3753,7 +3762,7 @@ void UI_InitOneTime(void)
 	Setup3.amSens = 3;
 
 	Setup2.quick = 0; 
-	keep = 0;
+	keep.flag = 0;
 }
 
 char *UI_GetSndInfo(uint8_t num)
@@ -5313,7 +5322,7 @@ void UI_Product_Process_Calibration_Measure(void)
 		}
 		else {
 			MotorDrv_SetTargetPosition(50);
-			MotorDrv_SetSpeed(4); //fast move up
+			MotorDrv_SetSpeed(5); //fast move up
 			App_SetUIProcess(UI_Product_Process_Calibration_GoToStartPos);
 			UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_7PLACE, 370,208, Product_Calib.motorSpeed, 1);
 			return;
@@ -5760,6 +5769,8 @@ void UI_SystemInit_Timer(uint16_t nIDEvent)
 			break;
 		case 2:
 #ifndef USE_JIG_TEST_MODE
+		  	//break;
+			
 			if (!EEPROMDisk_Link()) {
 				App_SetUIProcess(UI_ProcessNull);
 				API_SetErrorCode(EC_EEP_LINK, EDT_DISP_HALT);
@@ -5784,7 +5795,7 @@ void UI_SystemInit_Timer(uint16_t nIDEvent)
 					EEPROMDisk_OpenWrite(filename);
 					EEPROMDisk_Write(CommonBuf, 512);
 					EEPROMDisk_Close();
-					EEPROMDisk_GetFree("0:/");
+					EEPROMDisk_GetFree("1:/");
 				}
 			}
 			else {
@@ -5794,7 +5805,7 @@ void UI_SystemInit_Timer(uint16_t nIDEvent)
 			}
 			#endif
 			//EEPROMDisk_GetFree("0:/");
-			fr = EEPROMDisk_stat("0:/KR20P", &fno);
+			fr = EEPROMDisk_stat(EEPROMDISK_PATH, &fno);
 			//fr = -1; //eeprom format
 			if (fr == -1) {
 				uart_putstring("f Format start(wait 12sec),50,210\n");
@@ -7352,7 +7363,7 @@ void UI_SpeedTime_OnBnClickedBtnLeft(void)
 {
 	if (loginInfo.type == LIT_USER) ;//pjg--190725 UI_SavePIToEEPROM(PInfoWnd2.id, (uint8_t *)CommonBuf);	
 
-	keep = 1;
+	keep.flag = 1;
    	UI_AngleMeasure_Create();
 }
 
@@ -7366,15 +7377,16 @@ void UI_SpeedTime_OnBnClickedBtnHome(void)
 			
 		}
 
+	keep.flag = 0;
 	if (Setup2.quick == 0) 
 	{
-		keep = 0;
+		//keep.flag = 0;
    		UI_Home_Create();
 	}
 
 	else 
 	{
-		keep = 0;
+		//keep.flag = 0;
 		UI_AngleMeasure_Create();
 	}
 	
@@ -8354,7 +8366,7 @@ void UI_Run_Timer(uint16_t nIDEvent)
 		case TIMER_ID_2:
 			if (RunWnd.time > 0) {
 				if(RunWnd.play != UI_RUN_MODE_HOME) {
-					if(Timer_sec >= 6){ //1min //pjg<>200103
+					if(Timer_sec >= 60){ //1min //pjg<>200103
 						RunWnd.time--;
 						PInfoWnd2.pi.totalTime++;
 						Timer_sec = 0;
@@ -8526,17 +8538,18 @@ void UI_Run_OnBnClickedBtnLeft(void)
 		//if (loginInfo.type == LIT_USER) UI_SavePIToEEPROM(PInfoWnd2.id, (uint8_t *)CommonBuf);
 	}
 	RunWnd.play = 0;
-	if (keep == 0 ) {
-		KeepSpd = SpdTmWnd.time; //201120 bg
-		KeepFlxAngle = AngleWnd.flAngle;
-		KeepExtAngle = AngleWnd.exAngle;
+	if (keep.flag == 0 ) {
+		keep.time = SpdTmWnd.time; //201120 bg
+		keep.flAngle = AngleWnd.flAngle;
+		keep.exAngle = AngleWnd.exAngle;
+		keep.speed = SpdTmWnd.speed;
 	}
 	SpdTmWnd.time = RunWnd.time; //201020 bg
 	//SpdTmWnd.speed= RunWnd.speed; //201020 bg
 	API_ChangeHMenu(hParent, RID_RN_BTN_PAUSE, RID_RN_BTN_PLAY);
 	App_KillTimer(TIMER_ID_2);
 	App_SetUIProcess(UI_ProcessNull); 
-	keep = 1;
+	keep.flag = 1;
    	UI_SpeedTime_Create();
 }
 
@@ -8560,7 +8573,7 @@ void UI_Run_OnBnClickedBtnHome(void)
 
 	else 
 	{
-		keep = 0;
+		keep.flag = 0;
 		UI_AngleMeasure_Create();
 	}
 
@@ -8850,6 +8863,8 @@ void UI_Run_OnBnClickedBtnStop(void)
 //uint32_t snesedCnt2 = 0;
 void UI_CheckCurrentSensitivity()
 {
+  	//return;
+  
 	if (MotorDrv_IsSensCurrent() && UI_Time.tmp3_ms == 0) {
 		MotorDrv_SetFlagSensCurrent(0);
 		UI_Time.tmp3_ms = 5000;
@@ -9915,10 +9930,11 @@ void UI_PopupRunComplete_OnBnClickedBtnOk(void)
 	//UI_Run_Create();
 	UI_LED_Control(LM_STAND_BY);
 
-	 if (keep == 1) {
-	 	SpdTmWnd.time = KeepSpd ; //201120 bg
-	 	AngleWnd.flAngle = KeepFlxAngle;
-	 	AngleWnd.exAngle = KeepExtAngle;
+	 if (keep.flag == 1) {
+	 	SpdTmWnd.time = keep.time ; //201120 bg
+	 	AngleWnd.flAngle = keep.flAngle; //pjg++210421
+	 	AngleWnd.exAngle = keep.exAngle;
+		SpdTmWnd.speed = keep.speed;
 	 }
 
 	if (loginInfo.type == LIT_USER) {           // 201119 bg
@@ -9928,16 +9944,17 @@ void UI_PopupRunComplete_OnBnClickedBtnOk(void)
 	UI_SaveParamToEEPROM(CommonBuf); // 201119 bg
 	//Total_Counter = PInfoWnd2.pi.totalRepeat;
 	//pjg--190725 UI_SavePIToEEPROM(PInfoWnd2.id, (uint8_t *)CommonBuf);
+	//keep.flag = 0;
 	if (Setup2.quick == 0) 
 	{
 
-		keep = 0;
+		//keep = 0;
    		UI_Home_Create();
 	}
 
 	else 
 	{
-		keep = 0;
+		//keep = 0;
 		UI_AngleMeasure_Create();
 	}
 }
@@ -18684,11 +18701,11 @@ void UI_PopupSaving_Process(void)
 			Option.usbcopypos = j;
 		}
 
+		#if 1
+		#else
 		//05,140deg disp error bug fix
 		SAVE_EXERCISE_INFO_V2 *ptr;
 		ptr = (SAVE_EXERCISE_INFO_V2 *)CommonBuf;
-		#if 1
-		#else
 		for (i = 0; i < size/sizeof(SAVE_EXERCISE_INFO_V2); i++) {
 			if (ptr[i].flg == 0) {
 				if (ptr[i].spm.exangle >= 0 && ptr[i].spm.exangle < 5) ptr[i].spm.exangle += 30; 
@@ -19678,7 +19695,7 @@ void UI_PopupDeleting_Process(void)
 			UI_VersionInfo_Create();
 			return;
 		}
-		if (!EEPROMDisk_FindFirst("0:/KR20P", (char *)"*.HKE", (char *)&buf[9])) {
+		if (!EEPROMDisk_FindFirst(EEPROMDISK_PATH, (char *)"*.HKE", (char *)&buf[9])) {
 			EEPROMDisk_CloseDir();
 			EEPROMDisk_UnMount();
 			EEPROMDisk_UnLink();
@@ -20817,6 +20834,7 @@ void UI_AngleMeasure_CheckCurrentSensitivity(void)
 void UI_AngleMeasure_DispMeaValue(void)
 {
 	if (MotorDrv_GetDirection() == MDD_CCW) { //down
+		#ifdef USE_MEASUER_3TIMES
 		if (SysInfo.meaCnt == ANG_MEA_TOTAL_COUNT-3) {
 			UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 363,77,AngleWnd.flAngle,3);
 			if (SaveExeInfoV2.flg == MST_MEASURE) {
@@ -20838,8 +20856,20 @@ void UI_AngleMeasure_DispMeaValue(void)
 				SaveExeInfoV2.smm.mi[SysInfo.meaCnt].flangle = AngleWnd.flAngle+SAVE_OFFSET_VALUE;
 			}
 		}
+		#else
+		if (SysInfo.meaCnt == 0) {
+			UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 363,77,AngleWnd.flAngle,3);
+			if (SaveExeInfoV2.flg == MST_MEASURE) {
+				SaveExeInfoV2.smm.mi[SysInfo.meaCnt].flangle = AngleWnd.flAngle+SAVE_OFFSET_VALUE;
+			}
+			else {
+				SaveExeInfoV2.spm.mi.flangle = AngleWnd.flAngle+SAVE_OFFSET_VALUE;
+			}
+		}
+		#endif
 	}
 	else {
+		#ifdef USE_MEASUER_3TIMES
 		if (SysInfo.meaCnt == ANG_MEA_TOTAL_COUNT-3) {
 			UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE, 38,77,AngleWnd.exAngle,3);
 			if (SaveExeInfoV2.flg == MST_MEASURE) {
@@ -20861,6 +20891,17 @@ void UI_AngleMeasure_DispMeaValue(void)
 				SaveExeInfoV2.smm.mi[SysInfo.meaCnt].exangle = AngleWnd.exAngle+SAVE_OFFSET_VALUE;
 			}
 		}
+		#else
+		if (SysInfo.meaCnt == 0) {
+			UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE, 38,77,AngleWnd.exAngle,3);
+			if (SaveExeInfoV2.flg == MST_MEASURE) {
+				SaveExeInfoV2.smm.mi[SysInfo.meaCnt].exangle = AngleWnd.exAngle+SAVE_OFFSET_VALUE;
+			}
+			else {
+				SaveExeInfoV2.spm.mi.exangle = AngleWnd.exAngle+SAVE_OFFSET_VALUE;
+			}
+		}
+		#endif
 	}
 }
 
@@ -20974,8 +21015,8 @@ void UI_AngleMeasure_OnBnClickedBtnLeft(void)
 	}
 
 	else {
-		keep = 0;
-		UI_AngleMeasure_Create();
+		//keep.flag = 0;
+		//UI_AngleMeasure_Create();
 	}
    	
 }
@@ -20991,15 +21032,16 @@ void UI_AngleMeasure_OnBnClickedBtnHome(void)
 		UI_InitVariable();
 	}
 
+	keep.flag = 0;
 	if (Setup2.quick == 0) 
 	{
-		keep = 0;
+		//keep.flag = 0;
    		UI_Home_Create();
 	}
 
 	else 
 	{
-		keep =0;
+		//keep =0;
 		UI_AngleMeasure_Create();
 	}
 }
@@ -21517,6 +21559,7 @@ void UI_AngleMeasure_SetMeasureMode(void)
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i meacom.png,346,117\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i meacom.png,346,163\r");
 	}
+	#ifdef USE_MEASUER_3TIMES
 	else if (SysInfo.meaCnt >= ANG_MEA_TOTAL_COUNT-1) {
 		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE, 38,77,SaveExeInfoV2.smm.mi[0].exangle-SAVE_OFFSET_VALUE,3);//AngleWnd.exAngle,3);
 		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 363,77,SaveExeInfoV2.smm.mi[0].flangle-SAVE_OFFSET_VALUE,3);//AngleWnd.flAngle,3);
@@ -21539,6 +21582,7 @@ void UI_AngleMeasure_SetMeasureMode(void)
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i meacom.png,18,69\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i meacom.png,346,69\r");
 	}
+	#endif
 	else {
 		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE, 38,77,0,3);
 		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 363,77,RunWnd.angle,3);
@@ -21559,7 +21603,7 @@ void UI_AngleMeasure_Init(void)
 
 	else {
 
-		if (keep == 0) {
+		//if (keep.flag == 0) {
 			// home init
 			SpdTmWnd.speed = MS_SPEED4;  //201026bg
 			App_SetUIProcess(UI_ProcessNull); //pjg++190905
@@ -21578,7 +21622,11 @@ void UI_AngleMeasure_Init(void)
 			// user - guest button init
 			UI_InitVariable();
 			loginInfo.type = LIT_GUEST;
-		}		
+		//}		
+		if (keep.flag == 1) {
+			AngleWnd.flAngle = keep.flAngle;
+			AngleWnd.exAngle = keep.exAngle;
+		}
 	
 	}
 
