@@ -262,7 +262,7 @@ int EEPROMDrv_WriteByte(uint8_t fd, uint32_t addr, uint8_t data)
 
 // buf[0:3] : opcode and address
 // buf[4]:~] : data
-uint32_t test_addr;
+//uint32_t test_addr;
 int EEPROMDrv_WritePage(uint8_t fd, uint32_t addr, uint8_t *data) 
 {
 	HAL_StatusTypeDef hstd;
@@ -310,7 +310,7 @@ int EEPROMDrv_WritePage(uint8_t fd, uint32_t addr, uint8_t *data)
 		HAL_Delay(1);
 	}
 	//if (i == 0) return 0;
-	test_addr = addr;
+	//test_addr = addr;
 	return EEP_PAGE_SIZE;
 }
 
@@ -695,7 +695,8 @@ int EEPROMDisk_MkDir(char *dir)
 	FRESULT res;
 
 	res = f_mkdir(dir);
-	if (res != FR_OK) return 0;
+	if (res != FR_OK) 
+	  return 0;
 	return 1;
 }
 
