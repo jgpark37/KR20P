@@ -49,7 +49,6 @@ source
 //#define USE_DEBUG_MODE
 #define USE_CALIB_ONLY_0KG					//pjg++200110
 //#define USE_QC_LIFE_TEST_SAVE_CUR			//pjg++200131 : current save to usb every 60min, run time max is 999min, display usb check message
-//#define USE_MEASUER_3TIMES
 
 //
 #define PATIENT_NUM					84
@@ -118,7 +117,8 @@ source
 #define EXERCISE_INFO_NUM			10//375//480//(480:1.6month, 85 person, 256Kbyte memory)2//0
 
 #define RUN_ANGLE_MAX				140
-#define RUN_ANGLE_MIN				-13  //201026bg
+#define RUN_ANGLE_MIN				-5 
+//#define RUN_ANGLE_MIN				-13  //201026bg for quality test
 #define ANGLE_MOVE_GAP				5
 #define ANGLE_MIN_GAP				5
 #define ANGLE_MIN_DEG				5
@@ -139,11 +139,7 @@ source
 //
 #define ANG_CHK_ANGLE_MAX			135
 #define ANG_CHK_ANGLE_MIN			0
-#ifdef USE_MEASUER_3TIMES
 #define ANG_MEA_TOTAL_COUNT			3
-#else
-#define ANG_MEA_TOTAL_COUNT			1
-#endif
 #define ANG_MEA_MAX_SENS_VALUE		1
 #define ANG_MEA_MAX_SENS_STEP		1
 #define ANG_MEA_NO_GRAVITY_ANGLE		10
@@ -400,7 +396,7 @@ const char COMPANY_t[COMPANY_LENGTH] = {"HEXAR SYSTEMS"};
 const char MODEL_t[MODEL_LENGTH] = {"KR20P"};
 //v1.1.0 : hw v2.1
 //v1.2.0 : hw v1.8 product 
-const uint8_t FW_VER[] = {'1', '2', '3','1'};//v1.0.Korea Gxx
+const uint8_t FW_VER[] = {'1', '2', '4','0'};//v1.0.Korea Gxx
 const uint8_t HW_VER[] = {'1', '8'};									
 const MYDATE_FMT CREATE_DATE = {2017, 3, 24};		//2017y, 3m, 24d
 const uint8_t CREATE_TIME[3] = {16, 31, 55};		//hour, min, sec
@@ -464,6 +460,7 @@ struct { //pjg++210421
 	char flag;
 	uint16_t time;
 	uint8_t  speed;
+	uint8_t speedBk;
 	int16_t flAngle;
 	int16_t exAngle;
 }keep;
@@ -5910,7 +5907,7 @@ void UI_SystemInit_Timer(uint16_t nIDEvent)
 			FlashDrv_SetParam(FLASH_PAGE_SIZE16);
 			//if (0) //init save flash param data
 			if (UI_LoadSystemInfoFromFlash(CommonBuf))
-            { //pjg++180221
+            		{ //pjg++180221
 				fssbi = (SYSTEM_BASE_INFO *)CommonBuf;
 				//Product_Calib.maxCurrent = fssbi->product.Cal_MaxCur;
 				//ptr = &fssbi->product.Cal_MaxCur[0][0];
@@ -7743,7 +7740,7 @@ void UI_SpeedTime_Init(void)
 	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 355, 94, SpdTmWnd.time,2);
 	#endif
 
-	
+	SpdTmWnd.speed = keep.speedBk; //pjg++210429
 	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE, pos,94, SpdTmWnd.speed,1);
 
 	UI_PINumber_Display();
@@ -11532,7 +11529,7 @@ void UI_PiLoad_OnBnClickedBtnLoad(void)
 	temp = EEPROMDisk_GetFree("0:");
 	temp2 = EEPROMDisk_GetTotalFromMem();
 	EEPROMDisk_Close();
-    if (temp2 == 0) temp = 0;
+    	if (temp2 == 0) temp = 0;
 	else temp = (temp*100)/temp2;
 	//temp = 91;
 	//is 99% free. full
@@ -20834,7 +20831,6 @@ void UI_AngleMeasure_CheckCurrentSensitivity(void)
 void UI_AngleMeasure_DispMeaValue(void)
 {
 	if (MotorDrv_GetDirection() == MDD_CCW) { //down
-		#ifdef USE_MEASUER_3TIMES
 		if (SysInfo.meaCnt == ANG_MEA_TOTAL_COUNT-3) {
 			UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 363,77,AngleWnd.flAngle,3);
 			if (SaveExeInfoV2.flg == MST_MEASURE) {
@@ -20856,20 +20852,8 @@ void UI_AngleMeasure_DispMeaValue(void)
 				SaveExeInfoV2.smm.mi[SysInfo.meaCnt].flangle = AngleWnd.flAngle+SAVE_OFFSET_VALUE;
 			}
 		}
-		#else
-		if (SysInfo.meaCnt == 0) {
-			UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 363,77,AngleWnd.flAngle,3);
-			if (SaveExeInfoV2.flg == MST_MEASURE) {
-				SaveExeInfoV2.smm.mi[SysInfo.meaCnt].flangle = AngleWnd.flAngle+SAVE_OFFSET_VALUE;
-			}
-			else {
-				SaveExeInfoV2.spm.mi.flangle = AngleWnd.flAngle+SAVE_OFFSET_VALUE;
-			}
-		}
-		#endif
 	}
 	else {
-		#ifdef USE_MEASUER_3TIMES
 		if (SysInfo.meaCnt == ANG_MEA_TOTAL_COUNT-3) {
 			UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE, 38,77,AngleWnd.exAngle,3);
 			if (SaveExeInfoV2.flg == MST_MEASURE) {
@@ -20891,17 +20875,6 @@ void UI_AngleMeasure_DispMeaValue(void)
 				SaveExeInfoV2.smm.mi[SysInfo.meaCnt].exangle = AngleWnd.exAngle+SAVE_OFFSET_VALUE;
 			}
 		}
-		#else
-		if (SysInfo.meaCnt == 0) {
-			UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE, 38,77,AngleWnd.exAngle,3);
-			if (SaveExeInfoV2.flg == MST_MEASURE) {
-				SaveExeInfoV2.smm.mi[SysInfo.meaCnt].exangle = AngleWnd.exAngle+SAVE_OFFSET_VALUE;
-			}
-			else {
-				SaveExeInfoV2.spm.mi.exangle = AngleWnd.exAngle+SAVE_OFFSET_VALUE;
-			}
-		}
-		#endif
 	}
 }
 
@@ -21042,6 +21015,7 @@ void UI_AngleMeasure_OnBnClickedBtnHome(void)
 	else 
 	{
 		//keep =0;
+		SysInfo.meaCnt = 0; //pjg++210429
 		UI_AngleMeasure_Create();
 	}
 }
@@ -21132,7 +21106,7 @@ void UI_AngleMeasure_OnBnClickedBtnPause(void)
 	MotorDrv_Pause();
 	if (RunWnd.play == UI_RUN_MODE_HOME) RunWnd.play = UI_RUN_MODE_HOME_PAUSE;
 	else RunWnd.play = UI_RUN_MODE_PAUSE;
-    APP_SendMessage(0, WM_SOUND, 0, SNDID_OPERATION_STOP);
+    	APP_SendMessage(0, WM_SOUND, 0, SNDID_OPERATION_STOP);
 	App_KillTimer(TIMER_ID_6);
 	App_SetUIProcess(UI_ProcessNull); //pjg++170529
 	UI_LED_Control(LM_PAUSE);
@@ -21604,29 +21578,32 @@ void UI_AngleMeasure_Init(void)
 	else {
 
 		//if (keep.flag == 0) {
-			// home init
-			SpdTmWnd.speed = MS_SPEED4;  //201026bg
-			App_SetUIProcess(UI_ProcessNull); //pjg++190905
-			UI_LED_Control(LM_STAND_BY);
-
+		// home init
+		keep.speedBk = SpdTmWnd.speed;
+		SpdTmWnd.speed = MS_SPEED4;  //201026bg
+		App_SetUIProcess(UI_ProcessNull); //pjg++190905
+		UI_LED_Control(LM_STAND_BY);
+		SaveExeInfoV2.flg = MST_REHAB;
+		if (SysInfo.meaCnt < 1) {
 			// home - rehab button init
-			SaveExeInfoV2.flg = MST_REHAB;
 			SaveExeInfoV2.spm.mi.exangle = 0;
 			SaveExeInfoV2.spm.mi.flangle = 0;
-			FullInfo.type = FT_RUN;
-
-			// user init
-			RunWnd.complete = 0;
-			SysInfo.meaCnt = 0;
-
+			
+			if (keep.flag == 1) {
+				AngleWnd.flAngle = keep.flAngle;
+				AngleWnd.exAngle = keep.exAngle;
+			}
 			// user - guest button init
 			UI_InitVariable();
-			loginInfo.type = LIT_GUEST;
-		//}		
-		if (keep.flag == 1) {
-			AngleWnd.flAngle = keep.flAngle;
-			AngleWnd.exAngle = keep.exAngle;
 		}
+		FullInfo.type = FT_RUN;
+
+		// user init
+		RunWnd.complete = 0;
+		//SysInfo.meaCnt = 0; //pjg--210429
+
+		loginInfo.type = LIT_GUEST;
+		//}		
 	
 	}
 

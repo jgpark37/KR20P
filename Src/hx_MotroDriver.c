@@ -140,7 +140,9 @@ void MotorDrv_CheckSensitivityCurrent()
 		temp -= 5;
 	}
 	//pjg<>191106 : bug fix - prevent to occur re-trig sensCureent flag
-	if (MDrvInfo.current+temp > MDrvInfo.sensCurrent && MDrvInfo.f.b.sensCurrent == 0 && MDrvInfo.timer.tmp_ms[1] == 0) {
+	if (MDrvInfo.current+temp > MDrvInfo.sensCurrent && 
+		MDrvInfo.f.b.sensCurrent == 0 && 
+		MDrvInfo.timer.tmp_ms[1] == 0) {
 		MDrvInfo.sensChkCnt++;
 	}
 	else {
