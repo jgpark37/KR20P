@@ -21533,7 +21533,6 @@ void UI_AngleMeasure_SetMeasureMode(void)
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i meacom.png,346,117\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i meacom.png,346,163\r");
 	}
-	#ifdef USE_MEASUER_3TIMES
 	else if (SysInfo.meaCnt >= ANG_MEA_TOTAL_COUNT-1) {
 		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE, 38,77,SaveExeInfoV2.smm.mi[0].exangle-SAVE_OFFSET_VALUE,3);//AngleWnd.exAngle,3);
 		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 363,77,SaveExeInfoV2.smm.mi[0].flangle-SAVE_OFFSET_VALUE,3);//AngleWnd.flAngle,3);
@@ -21556,7 +21555,6 @@ void UI_AngleMeasure_SetMeasureMode(void)
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i meacom.png,18,69\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i meacom.png,346,69\r");
 	}
-	#endif
 	else {
 		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE, 38,77,0,3);
 		UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 363,77,RunWnd.angle,3);
