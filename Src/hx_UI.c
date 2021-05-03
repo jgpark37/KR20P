@@ -147,11 +147,34 @@ source
 //#define USE_ANG_MEA_METHOD_TYPE2		//pjg++191106 : when down - add offset at 110 deg over, when up - add offset all deg
 //#define USE_MOTOR_RUN_TEST			
 
+//progress
+#define PROGRESS_DEG_MAX				10
+#define PROGRESS_DEG_MIN				5
+#define PROGRESS_TIME_MAX				20
+#define PROGRESS_TIME_MIN				1
+//limited pause
+#define LIMITED_PAUSE_MAX_VALUE				99
+#define LIMITED_PAUSE_MIN_VALUE				1
+//vibration
+#define VIBRATION_DEG_MAX				10
+#define VIBRATION_DEG_MIN				3
+#define VIBRATION_CNT_MAX				20
+#define VIBRATION_CNT_MIN				2
+//home pos
+#define HOMEPOS_MAX_ANGLE			90
+#define HOMEPOS_MIN_ANGLE				0
+//sensitivity
+#define SENSITIVITY_MAX					4
+#define SENSITIVITY_MIN					1
+
 //
 #define PRODUCT_MEA_ANGLE_MAX		49
 #define PRODUCT_MEA_ANGLE_MIN		-4
 //
 #define SAVE_EXE_INFO_MARK			0x55AA
+#define SAVE_EXE_MAX_COUNT			405
+//
+#define EXE_TIME_MAX						60
 //
 #define EEPROMDISK_DRIVE			'0'
 #define EEPROMDISK_DIV			    ":/"
@@ -400,6 +423,7 @@ const uint8_t FW_VER[] = {'1', '2', '4','0'};//v1.0.Korea Gxx
 const uint8_t HW_VER[] = {'1', '8'};									
 const MYDATE_FMT CREATE_DATE = {2017, 3, 24};		//2017y, 3m, 24d
 const uint8_t CREATE_TIME[3] = {16, 31, 55};		//hour, min, sec
+const uint8_t PARAM_VER[] = {'1', '0'}; //pjg++210503
 
 const uint8_t DoubleBufStartCmd[] = {"<D\r"};
 const uint8_t DoubleBufEndCmd[] = {"!D\r"};
@@ -682,7 +706,7 @@ typedef __packed struct _tagFLASH_SAVE_SYSTEM_INFO {
 	uint32_t writeTime;	//flash re-write times(max 10,000)
 	uint32_t nextNode;
 	uint32_t replaceNode;
-	//BASETUP_INFO AngleWnd;
+	BASETUP_INFO AngleWnd;
 	BASETUP2_INFO SpdTmWnd;
 	//SETUP_INFO setup;
 	SETUP2_INFO setup2;
@@ -1503,9 +1527,8 @@ uint32_t UI_LoadParamFromEEPROM(char *buf)
 		return 0;
 	}
 
-	if (pFSSysInfo->ver[0] != FW_VER[0] ||
-		pFSSysInfo->ver[1] != FW_VER[1] ||
-		pFSSysInfo->ver[2] != FW_VER[2]) {
+	if (pFSSysInfo->ver[2] != PARAM_VER[0] ||
+		pFSSysInfo->ver[3] != PARAM_VER[1]) {
 		return 0;
 	}
 
@@ -1571,7 +1594,8 @@ int UI_SaveParamToEEPROM(char *buf)
 	//pFSSysInfo = (SYSTEM_INFO *)&buf[0];		
 	for (i = 0; i < COMPANY_LENGTH; i++) pFSSysInfo->company[i] = COMPANY_t[i];
 	for (i = 0; i < MODEL_LENGTH; i++) pFSSysInfo->model[i] = MODEL_t[i];
-	for (i = 0; i < 3; i++) pFSSysInfo->ver[i] = FW_VER[i];
+	for (i = 0; i < 2; i++) pFSSysInfo->ver[i] = FW_VER[i]; 
+	for (i = 0; i < 2; i++) pFSSysInfo->ver[i+2] = PARAM_VER[i]; 
 
 	if (Setup3.writeTime) {
 		pFSSysInfo->modifyTime[0] = UI_Time.time.hour;
@@ -1604,18 +1628,18 @@ int UI_SaveParamToEEPROM(char *buf)
 		//pFSSysInfo->replaceNode = FLASH_SYSTEM_INFO_ADDR;//0x12345678;
 	}
 
-//	pFSSysInfo->AngleWnd.exAngle = AngleWnd.exAngle;
-//	pFSSysInfo->AngleWnd.flAngle = AngleWnd.flAngle;
+	pFSSysInfo->AngleWnd.exAngle = AngleWnd.exAngle;
+	pFSSysInfo->AngleWnd.flAngle = AngleWnd.flAngle;
 	pFSSysInfo->SpdTmWnd.speed = SpdTmWnd.speed;
-       pFSSysInfo->SpdTmWnd.time = SpdTmWnd.time;
-//	pFSSysInfo->setup3.PDeg = Setup3.PDeg;
-//	pFSSysInfo->setup3.PTm = Setup3.PTm;
-///	pFSSysInfo->setup3.ProChk = Setup3.ProChk;
-//	pFSSysInfo->setup3.LP = Setup3.LP;
-//	pFSSysInfo->setup3.LPChk = Setup3.LPChk;
-//	pFSSysInfo->setup3.VDeg = Setup3.VDeg;
-//	pFSSysInfo->setup3.VCnt = Setup3.VCnt;
-//	pFSSysInfo->setup3.VibChk = Setup3.VibChk;
+	pFSSysInfo->SpdTmWnd.time = SpdTmWnd.time;
+	pFSSysInfo->setup3.PDeg = Setup3.PDeg;
+	pFSSysInfo->setup3.PTm = Setup3.PTm;
+	pFSSysInfo->setup3.ProChk = Setup3.ProChk;
+	pFSSysInfo->setup3.LP = Setup3.LP;
+	pFSSysInfo->setup3.LPChk = Setup3.LPChk;
+	pFSSysInfo->setup3.VDeg = Setup3.VDeg;
+	pFSSysInfo->setup3.VCnt = Setup3.VCnt;
+	pFSSysInfo->setup3.VibChk = Setup3.VibChk;
 	pFSSysInfo->setup3.sensitivity = Setup3.sensitivity;
 	pFSSysInfo->setup3.IPos = Setup3.IPos;
 	//pFSSysInfo->setup3.AngChkSens = Setup3.AngChkSens;
@@ -2201,7 +2225,7 @@ int UI_Exercise_LoadLastData(uint32_t id, SAVE_EXERCISE_INFO_V2 *psei)
 			else save_num = psei_temp->smm.runTime;
 			//check mark
 			temp = size / sizeof(SAVE_EXERCISE_INFO_V2);
-			if (psei_temp->flg > 1 || save_num != temp) { //data
+			if (psei_temp->flg > 1 || save_num != temp || temp > SAVE_EXE_MAX_COUNT) { //data
 				//MotorDrv_Release();
 				EEPROMDisk_Close();
 				EEPROMDisk_UnMount();
@@ -3531,8 +3555,8 @@ void UI_InitSetupVariable(void)    //시스템 초기화 시에 1번 하며  EEPROM 에서 불
 	Setup3.ProChk = BST_UNCHECKED;
 	Setup3.LPChk = BST_UNCHECKED;
 	Setup3.VibChk = BST_UNCHECKED;
-	Setup2.vol = 4;		// 4 max
-	Setup2.bright = 4;		// 4 max		
+	Setup2.vol = SND_LEVEL_NUM-1;		// 4 max
+	Setup2.bright = BL_LEVEL_NUM-1;		// 4 max		
 	Setup2.quick = 0; //201109bg
 	SpdTmWnd.speed = MS_SPEED4;
 	SpdTmWnd.time = 30;
@@ -3670,7 +3694,7 @@ void UI_PIVariable(void)   //patiant info initial value.
 	Setup2.vol = 4;		
 	Setup2.bright = 4;										   							 
 	Setup3.PDeg = 5;	
-	Setup3.PTm = 1;	
+	Setup3.PTm = PROGRESS_TIME_MIN;	
 	Setup3.LP = 3;
 	Setup3.VDeg = 3;
 	Setup3.VCnt = 3;
@@ -3760,6 +3784,7 @@ void UI_InitOneTime(void)
 
 	Setup2.quick = 0; 
 	keep.flag = 0;
+	keep.speedBk = MS_SPEED4;
 }
 
 char *UI_GetSndInfo(uint8_t num)
@@ -5830,6 +5855,7 @@ void UI_SystemInit_Timer(uint16_t nIDEvent)
 			break;
 		case 3:
 			UI_InitSetupVariable(); 
+			UI_InitVariable();
 			//FlashDrv_SetTempBuf(&CommonBuf[FLASH_PAGE_SIZE16]);
 			//FlashDrv_SetParam(FLASH_PAGE_SIZE16);
 			//if (0) { //init save eeprom param data
@@ -5837,17 +5863,34 @@ void UI_SystemInit_Timer(uint16_t nIDEvent)
 			if (UI_LoadParamFromEEPROM(CommonBuf)) {
 				fssi = (SYSTEM_INFO *)CommonBuf;
 
-				SpdTmWnd.speed = fssi-> SpdTmWnd.speed; //201109bg
-				if(SpdTmWnd.speed > 5 ) SpdTmWnd.speed =MS_SPEED4;
-
-				SpdTmWnd.time = fssi-> SpdTmWnd.time;   //201109bg
-				if(SpdTmWnd.time > 99 ) SpdTmWnd.time =30;
+				keep.flag = 1;
+				if(fssi-> SpdTmWnd.speed <= MS_SPEED_MAX) {
+					//SpdTmWnd.speed = fssi-> SpdTmWnd.speed; //201109bg
+					keep.speed = fssi-> SpdTmWnd.speed;
+				}
+				else keep.flag = 0;
+				if(fssi->SpdTmWnd.time <= EXE_TIME_MAX && fssi->SpdTmWnd.time > 0) {
+					SpdTmWnd.time = fssi-> SpdTmWnd.time;   //201109bg
+					keep.time = fssi-> SpdTmWnd.time;
+				}
+				else keep.flag = 0;
+				if (fssi->AngleWnd.flAngle <= RUN_ANGLE_MAX && fssi->AngleWnd.flAngle >= RUN_ANGLE_MIN) {
+					AngleWnd.flAngle =  fssi->AngleWnd.flAngle;
+					keep.flAngle = fssi->AngleWnd.flAngle;
+				}
+				else keep.flag = 0;
+				if (AngleWnd.exAngle <= RUN_ANGLE_MAX && AngleWnd.exAngle >= RUN_ANGLE_MIN) {
+					AngleWnd.exAngle =  fssi->AngleWnd.exAngle;
+					keep.exAngle = fssi->AngleWnd.exAngle;
+				}
+				else keep.flag = 0;
 				
-				Setup2.vol = fssi->setup2.vol;
-				Setup2.quick= fssi->setup2.quick; //201109bg
-				if (Setup2.vol > 4) Setup2.vol = 4;  //pjg++170609 bug fix:flash save err //201119bg 
-				Setup2.bright = fssi->setup2.bright;
-				if (Setup2.bright > 4) Setup2.bright = 4; //201119bg 
+				if (fssi->setup2.vol < SND_LEVEL_NUM)  //pjg++170609 bug fix:flash save err //201119bg 
+					Setup2.vol = fssi->setup2.vol;
+				if (fssi->setup2.quick <= BST_CHECKED)
+					Setup2.quick= fssi->setup2.quick; //201109bg
+				if (fssi->setup2.bright < BL_LEVEL_NUM)  //201119bg 
+					Setup2.bright = fssi->setup2.bright;
 				//Setup.sndGuid = fssi->setup.sndGuid;
 				//Setup.lsrpt_en = fssi->setup.lsrpt_en;
 				//Setup2.lsrpt_en2 = fssi->setup2.lsrpt_en2;
@@ -5855,17 +5898,25 @@ void UI_SystemInit_Timer(uint16_t nIDEvent)
 				//Setup2.led_en = fssi->setup2.led_en;
 				Setup2.language = fssi->setup2.language;
 				if(Setup2.language >= LT_MAX) Setup2.language = LT_ENG;
-		//		Setup3.PDeg = fssi->setup3.PDeg;
-		//		Setup3.PTm = fssi->setup3.PTm;
-		//		Setup3.ProChk = fssi->setup3.ProChk;
+				if (fssi->setup3.ProChk <= BST_CHECKED)
+					Setup3.ProChk = fssi->setup3.ProChk;
+				if (fssi->setup3.PDeg <= PROGRESS_DEG_MAX && fssi->setup3.PDeg >= PROGRESS_DEG_MIN)
+					Setup3.PDeg = fssi->setup3.PDeg;
+				if (fssi->setup3.PTm <= PROGRESS_TIME_MAX && fssi->setup3.PDeg >= PROGRESS_TIME_MIN)
+					Setup3.PTm = fssi->setup3.PTm;
+				
 				//Setup2.stand_by = fssi->setup2.stand_by;
-		//		Setup3.LPChk = fssi->setup3.LPChk;
-		//		Setup3.VibChk = fssi->setup3.VibChk;
+				if (fssi->setup3.LPChk <= BST_CHECKED)
+					Setup3.LPChk = fssi->setup3.LPChk;
+				if (fssi->setup3.VibChk <= BST_CHECKED)
+					Setup3.VibChk = fssi->setup3.VibChk;
 				//Setup.angle = fssi->setup.angle;
-		//		Setup3.VCnt = fssi->setup3.VCnt;
+				if (fssi->setup3.VCnt <= VIBRATION_CNT_MAX && fssi->setup3.VCnt >= VIBRATION_CNT_MIN)
+					Setup3.VCnt = fssi->setup3.VCnt;
 				Setup3.IPos = fssi->setup3.IPos; //pjg<>190813 : ignore at boot time
-				if (Setup3.IPos < 0 || Setup3.IPos > 140) Setup3.IPos = HOME_IN_INIT_POS;
-				Setup3.sensitivity = fssi->setup3.sensitivity;
+				if (Setup3.IPos < HOMEPOS_MIN_ANGLE|| Setup3.IPos > HOMEPOS_MAX_ANGLE) Setup3.IPos = HOME_IN_INIT_POS;
+				if (fssi->setup3.sensitivity <= SENSITIVITY_MAX && fssi->setup3.VCnt >= SENSITIVITY_MIN)
+					Setup3.sensitivity = fssi->setup3.sensitivity;
 				//Setup3.AngChkSens = fssi->setup3.AngChkSens;
 				//if (Setup3.AngChkSens > ANG_MEA_MAX_SENS_VALUE) Setup3.AngChkSens = 2;
 				Setup3.amSens = fssi->setup3.amSens;
@@ -5892,6 +5943,7 @@ void UI_SystemInit_Timer(uint16_t nIDEvent)
 				Setup3.writeTime = 0;
 				UI_SaveParamToEEPROM(CommonBuf);
 			}
+
 #endif
 			break;
 		case 4: 
@@ -5982,7 +6034,7 @@ void UI_SystemInit_Timer(uint16_t nIDEvent)
 			MotorDrv_SetOverCurrent(STANDBY_CHK_CURRENT); //prevent that error is occur in booting
 			break;
 		case 9:
-			UI_InitVariable();
+			//UI_InitVariable();
 			SpdTmWnd.speed = MS_SPEED_MAX;
 			ptr = (uint8_t *)&Setup2;
 			ptr2 = (uint8_t *)&Setup2Old;
@@ -6236,7 +6288,7 @@ void UI_Loading_Timer(uint16_t nIDEvent)
 		MotorDrv_SetTargetPosition(Setup3.IPos);
 		MotorDrv_StopHome();
 		App_KillTimer(TIMER_ID_1);
-		if(SpdTmWnd_bk_speed < 3){
+		if(SpdTmWnd_bk_speed <= MS_SPEED_MAX){
 			SpdTmWnd.speed = SpdTmWnd_bk_speed;
 		}
 		RunWnd.play = UI_RUN_MODE_PAUSE;
@@ -6633,7 +6685,7 @@ void UI_Home_OnBnClickedBtnSetup(void)
 void UI_Home_Init(void)
 {
 
-	SpdTmWnd.speed = MS_SPEED4;  //201026bg
+	//SpdTmWnd.speed = MS_SPEED4;  //201026bg
 	
 	API_CreateWindow("", pBtnInfo[RID_HOME_BTN_MEA*2], BS_PUSHBUTTON, 
 			GetNumFromString(pBtnInfo[RID_HOME_BTN_MEA*2], ',', 1),
@@ -7374,7 +7426,7 @@ void UI_SpeedTime_OnBnClickedBtnHome(void)
 			
 		}
 
-	keep.flag = 0;
+	//keep.flag = 0;
 	if (Setup2.quick == 0) 
 	{
 		//keep.flag = 0;
@@ -7398,6 +7450,13 @@ void UI_SpeedTime_OnBnClickedBtnRight(void)
 	
 	UI_Run_InitVar();
 	
+	//if (keep.flag == 0 ) {
+		keep.time = SpdTmWnd.time; //201120 bg
+		keep.flAngle = AngleWnd.flAngle;
+		keep.exAngle = AngleWnd.exAngle;
+		keep.speed = SpdTmWnd.speed;
+	//}
+	//keep.flag = 1; //pjg++210503
 	//if((EXERCISE_INFO_NUM*19/20) < Exercise.addr && Exercise.addr < EXERCISE_INFO_NUM)
 	//	UI_PopupMemoryWarning_Create();
 	//else if(Exercise.addr >= EXERCISE_INFO_NUM)	UI_PopupDataFull_Create();
@@ -7508,11 +7567,11 @@ void UI_SpeedTime_OnBnLongClickedBtnSpdDown(void)
 void UI_SpeedTime_OnBnClickedBtnTmUp(void)
 {
 	  
-	//if(SpdTmWnd.time >= 60)  SpdTmWnd.time = 60;
+	//if(SpdTmWnd.time >= EXE_TIME_MAX)  SpdTmWnd.time = 60;
 #ifdef USE_QC_LIFE_TEST_SAVE_CUR
 	if(SpdTmWnd.time < 9999)  SpdTmWnd.time++;
 #else
-	if(SpdTmWnd.time < 60)  SpdTmWnd.time++;
+	if(SpdTmWnd.time < EXE_TIME_MAX)  SpdTmWnd.time++;
 #endif
 	{
 		if(Setup3.ProChk == BST_CHECKED){
@@ -7529,7 +7588,7 @@ void UI_SpeedTime_OnBnClickedBtnTmUp(void)
 #ifdef USE_QC_LIFE_TEST_SAVE_CUR
 			if(SpdTmWnd.time == 9999){
 #else
-			if(SpdTmWnd.time == 60){
+			if(SpdTmWnd.time == EXE_TIME_MAX){
 #endif
 				APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,345,134\r");
 				App_SetButtonOption(RID_STS_BTN_TMP, BN_DISABLE);
@@ -7565,7 +7624,7 @@ void UI_SpeedTime_OnBnClickedBtnTmDown(void)
 #ifdef USE_QC_LIFE_TEST_SAVE_CUR
 		if(SpdTmWnd.time < 9999)
 #else
-		if(SpdTmWnd.time < 60)
+		if(SpdTmWnd.time < EXE_TIME_MAX)
 #endif
 		{
 			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i plus.bmp,345,133\r");
@@ -7591,7 +7650,7 @@ void UI_SpeedTime_OnBnLongClickedBtnTmUp(void)
 			SpdTmWnd.time++;
 	}
 #else
-	if(SpdTmWnd.time < 60)
+	if(SpdTmWnd.time < EXE_TIME_MAX)
 	{	
 		if (SpdTmWnd.time < 56)  SpdTmWnd.time += 5;
 		else// if(SpdTmWnd.time >= 56) 
@@ -7612,7 +7671,7 @@ void UI_SpeedTime_OnBnLongClickedBtnTmUp(void)
 #ifdef USE_QC_LIFE_TEST_SAVE_CUR
 		if(SpdTmWnd.time == 9999){
 #else
-		if(SpdTmWnd.time == 60){
+		if(SpdTmWnd.time == EXE_TIME_MAX){
 #endif
 			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,345,134\r");
 			App_SetButtonOption(RID_STS_BTN_TMP, BN_DISABLE);
@@ -7657,7 +7716,7 @@ void UI_SpeedTime_OnBnLongClickedBtnTmDown(void)
 #ifdef USE_QC_LIFE_TEST_SAVE_CUR
 	if(SpdTmWnd.time < 9999)
 #else
-	if(SpdTmWnd.time < 60)
+	if(SpdTmWnd.time < EXE_TIME_MAX)
 #endif
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i plus.bmp,345,133\r");
@@ -7732,6 +7791,10 @@ void UI_SpeedTime_Init(void)
 	
 	FullInfo.type = FT_RUN;
 
+	//SpdTmWnd.speed = keep.speedBk; //pjg++210429
+	//if (keep.flag == 1) {
+	//	SpdTmWnd.speed = keep.speed;
+	//}
 	//if (loginInfo.type == LIT_USER) UI_LoadPIFromEEPROM(PInfoWnd2.id, (uint8_t *)CommonBuf);
 	#ifdef USE_QC_LIFE_TEST_SAVE_CUR
 	SpdTmWnd.speed = MS_SPEED_MAX;
@@ -7740,7 +7803,6 @@ void UI_SpeedTime_Init(void)
 	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 355, 94, SpdTmWnd.time,2);
 	#endif
 
-	SpdTmWnd.speed = keep.speedBk; //pjg++210429
 	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE, pos,94, SpdTmWnd.speed,1);
 
 	UI_PINumber_Display();
@@ -7773,7 +7835,7 @@ void UI_SpeedTime_Init(void)
 #ifdef USE_QC_LIFE_TEST_SAVE_CUR
 	else if(SpdTmWnd.time == 9999)
 #else
-	else if(SpdTmWnd.time == 60)
+	else if(SpdTmWnd.time == EXE_TIME_MAX)
 #endif
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,345,133\r");
@@ -8535,18 +8597,12 @@ void UI_Run_OnBnClickedBtnLeft(void)
 		//if (loginInfo.type == LIT_USER) UI_SavePIToEEPROM(PInfoWnd2.id, (uint8_t *)CommonBuf);
 	}
 	RunWnd.play = 0;
-	if (keep.flag == 0 ) {
-		keep.time = SpdTmWnd.time; //201120 bg
-		keep.flAngle = AngleWnd.flAngle;
-		keep.exAngle = AngleWnd.exAngle;
-		keep.speed = SpdTmWnd.speed;
-	}
 	SpdTmWnd.time = RunWnd.time; //201020 bg
 	//SpdTmWnd.speed= RunWnd.speed; //201020 bg
 	API_ChangeHMenu(hParent, RID_RN_BTN_PAUSE, RID_RN_BTN_PLAY);
 	App_KillTimer(TIMER_ID_2);
 	App_SetUIProcess(UI_ProcessNull); 
-	keep.flag = 1;
+	//keep.flag = 1;
    	UI_SpeedTime_Create();
 }
 
@@ -8563,14 +8619,14 @@ void UI_Run_OnBnClickedBtnHome(void)
 	App_KillTimer(TIMER_ID_2);
 	App_SetUIProcess(UI_ProcessNull); 
 
-		if (Setup2.quick == 0) 
+	if (Setup2.quick == 0) 
 	{
    		UI_Home_Create();
 	}
 
 	else 
 	{
-		keep.flag = 0;
+		//keep.flag = 0;
 		UI_AngleMeasure_Create();
 	}
 
@@ -9935,7 +9991,7 @@ void UI_PopupRunComplete_OnBnClickedBtnOk(void)
 	 }
 
 	if (loginInfo.type == LIT_USER) {           // 201119 bg
-	UI_Exercise_SaveData(PInfoWnd2.id, 1, 0);
+		UI_Exercise_SaveData(PInfoWnd2.id, 1, 0);
 	}
 
 	UI_SaveParamToEEPROM(CommonBuf); // 201119 bg
@@ -16279,13 +16335,13 @@ void UI_Progress_OnBnClickedBtnRight(void)
 
 void UI_Progress_OnBnClickedBtnDegUp(void)
 {
-	if(Setup3.PDeg < 10) Setup3.PDeg++;
-	if(Setup3.PDeg == 10)
+	if(Setup3.PDeg < PROGRESS_DEG_MAX) Setup3.PDeg++;
+	if(Setup3.PDeg == PROGRESS_DEG_MAX)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,285,66\r");
 		App_SetButtonOption(RID_PRO_BTN_DEGP, BN_DISABLE);
 	}
-	if(Setup3.PDeg > 5)
+	if(Setup3.PDeg > PROGRESS_DEG_MIN)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i minus.bmp,345,66\r");
 		App_SetButtonOption(RID_PRO_BTN_DEGM, BN_PUSHED);
@@ -16296,13 +16352,13 @@ void UI_Progress_OnBnClickedBtnDegUp(void)
 
 void UI_Progress_OnBnClickedBtnDegDown(void)
 {
-	if(Setup3.PDeg > 5) Setup3.PDeg--;
-	if(Setup3.PDeg == 5)
+	if(Setup3.PDeg > PROGRESS_DEG_MIN) Setup3.PDeg--;
+	if(Setup3.PDeg == PROGRESS_DEG_MIN)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,346,66\r");
 		App_SetButtonOption(RID_PRO_BTN_DEGM, BN_DISABLE);
 	}
-	if(Setup3.PDeg < 10)
+	if(Setup3.PDeg < PROGRESS_DEG_MAX)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i plus.bmp,286,66\r");
 		App_SetButtonOption(RID_PRO_BTN_DEGP, BN_PUSHED);
@@ -16317,14 +16373,14 @@ void UI_Progress_OnBnLongClickedBtnDegUp(void)
 	{
 		Setup3.PDeg += 2;
 	}
-	else if(Setup3.PDeg <= 8 || Setup3.PDeg < 10)
+	else if(Setup3.PDeg <= 8 || Setup3.PDeg < PROGRESS_DEG_MAX)
 		Setup3.PDeg++;
-	if(Setup3.PDeg == 10)
+	if(Setup3.PDeg == PROGRESS_DEG_MAX)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,285,66\r");
 		App_SetButtonOption(RID_PRO_BTN_DEGP, BN_DISABLE);
 	}
-	if(Setup3.PDeg > 5)
+	if(Setup3.PDeg > PROGRESS_DEG_MIN)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i minus.bmp,345,66\r");
 		App_SetButtonOption(RID_PRO_BTN_DEGM, BN_PUSHED);
@@ -16342,12 +16398,12 @@ void UI_Progress_OnBnLongClickedBtnDegDown(void)
 	else if(Setup3.PDeg >= 7  || Setup3.PDeg > 1)
 		Setup3.PDeg--;
 	
-	if(Setup3.PDeg == 5)
+	if(Setup3.PDeg == PROGRESS_DEG_MIN)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,346,66\r");
 		App_SetButtonOption(RID_PRO_BTN_DEGM, BN_DISABLE);
 	}
-	if(Setup3.PDeg < 10)
+	if(Setup3.PDeg < PROGRESS_DEG_MAX)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i plus.bmp,286,66\r");
 		App_SetButtonOption(RID_PRO_BTN_DEGP, BN_PUSHED);
@@ -16357,14 +16413,14 @@ void UI_Progress_OnBnLongClickedBtnDegDown(void)
 
 void UI_Progress_OnBnClickedBtnTimeUp(void)
 {
-	if(Setup3.PTm < 20) Setup3.PTm++;
+	if(Setup3.PTm < PROGRESS_TIME_MAX) Setup3.PTm++;
 	{
-		if(Setup3.PTm >= SpdTmWnd.time || Setup3.PTm == 20)
+		if(Setup3.PTm >= SpdTmWnd.time || Setup3.PTm == PROGRESS_TIME_MAX)
 		{
 			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,285,141\r");
 			App_SetButtonOption(RID_PRO_BTN_TMP, BN_DISABLE);
 		}
-		if(Setup3.PTm > 1)
+		if(Setup3.PTm > PROGRESS_TIME_MIN)
 		{
 			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i minus.bmp,345,140\r");
 			App_SetButtonOption(RID_PRO_BTN_TMM, BN_PUSHED);
@@ -16375,19 +16431,19 @@ void UI_Progress_OnBnClickedBtnTimeUp(void)
 
 void UI_Progress_OnBnClickedBtnTimeDown(void)
 {
-	if(Setup3.PTm > 1) Setup3.PTm--;
+	if(Setup3.PTm > PROGRESS_TIME_MIN) Setup3.PTm--;
 	{
 		if(Setup3.PTm < SpdTmWnd.time)
 		{
 			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i plus.bmp,286,140\r");
 			App_SetButtonOption(RID_PRO_BTN_TMP, BN_PUSHED);
 		}
-		if(Setup3.PTm == 1)
+		if(Setup3.PTm == PROGRESS_TIME_MIN)
 		{
 			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,346,140\r");
 			App_SetButtonOption(RID_PRO_BTN_TMM, BN_DISABLE);
 		}
-		if(Setup3.PTm < 20)
+		if(Setup3.PTm < PROGRESS_TIME_MAX)
 		{
 			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i plus.bmp,286,140\r");
 			App_SetButtonOption(RID_PRO_BTN_TMP, BN_PUSHED);
@@ -16398,7 +16454,7 @@ void UI_Progress_OnBnClickedBtnTimeDown(void)
 
 void UI_Progress_OnBnLongClickedBtnTimeUp(void)
 {
-	if(Setup3.PTm < 20)
+	if(Setup3.PTm < PROGRESS_TIME_MAX)
 	{	if(Setup3.PTm < 16)
 		{
 			if(Setup3.PTm < SpdTmWnd.time-4)
@@ -16409,12 +16465,12 @@ void UI_Progress_OnBnLongClickedBtnTimeUp(void)
 		else
 			Setup3.PTm++;
 	}
-	if(Setup3.PTm >= SpdTmWnd.time || Setup3.PTm == 20)
+	if(Setup3.PTm >= SpdTmWnd.time || Setup3.PTm == PROGRESS_TIME_MAX)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,285,141\r");
 		App_SetButtonOption(RID_PRO_BTN_TMP, BN_DISABLE);
 	}
-	if(Setup3.PTm > 1)
+	if(Setup3.PTm > PROGRESS_TIME_MIN)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i minus.bmp,345,140\r");
 		App_SetButtonOption(RID_PRO_BTN_TMM, BN_PUSHED);
@@ -16431,7 +16487,7 @@ void UI_Progress_OnBnLongClickedBtnTimeUp(void)
 
 void UI_Progress_OnBnLongClickedBtnTimeDown(void)
 {
-	if(Setup3.PTm > 1)
+	if(Setup3.PTm > PROGRESS_TIME_MIN)
 	{
 		if (Setup3.PTm > 3) Setup3.PTm -= 3;
 		else Setup3.PTm--;
@@ -16441,12 +16497,12 @@ void UI_Progress_OnBnLongClickedBtnTimeDown(void)
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i plus.bmp,286,140\r");
 		App_SetButtonOption(RID_PRO_BTN_TMP, BN_PUSHED);
 	}
-	if(Setup3.PTm == 1)
+	if(Setup3.PTm == PROGRESS_TIME_MIN)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,346,140\r");
 		App_SetButtonOption(RID_PRO_BTN_TMM, BN_DISABLE);
 	}
-	if(Setup3.PTm < 20)
+	if(Setup3.PTm < PROGRESS_TIME_MAX)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i plus.bmp,286,140\r");
 		App_SetButtonOption(RID_PRO_BTN_TMP, BN_PUSHED);
@@ -16499,22 +16555,22 @@ void UI_Progress_OnBnClickedBtnChk(void)
 				APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i plus.bmp,286,140\r");
 				App_SetButtonOption(RID_PRO_BTN_TMP, BN_PUSHED);
 			}
-			if(Setup3.PDeg == 5)
+			if(Setup3.PDeg == PROGRESS_DEG_MIN)
 			{
 				APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,346,66\r");
 				App_SetButtonOption(RID_PRO_BTN_DEGM, BN_DISABLE);
 			}
-			if(Setup3.PDeg == 10)
+			if(Setup3.PDeg == PROGRESS_DEG_MAX)
 			{
 				APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,285,66\r");
 				App_SetButtonOption(RID_PRO_BTN_DEGP, BN_DISABLE);
 			}
-			if(Setup3.PTm == 20)
+			if(Setup3.PTm == PROGRESS_TIME_MAX)
 			{
 				APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,285,141\r");
 				App_SetButtonOption(RID_PRO_BTN_TMP, BN_DISABLE);
 			}
-			if(Setup3.PTm == 1)
+			if(Setup3.PTm == PROGRESS_TIME_MIN)
 			{
 				APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,346,140\r");
 				App_SetButtonOption(RID_PRO_BTN_TMM, BN_DISABLE);
@@ -16606,22 +16662,22 @@ void UI_Progress_Init(void)
 				APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i plus.bmp,286,140\r");
 				App_SetButtonOption(RID_PRO_BTN_TMP, BN_PUSHED);
 			}
-			if(Setup3.PDeg == 5)
+			if(Setup3.PDeg == PROGRESS_DEG_MIN)
 			{
 				APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,346,66\r");
 				App_SetButtonOption(RID_PRO_BTN_DEGM, BN_DISABLE);
 			}
-			if(Setup3.PDeg == 10)
+			if(Setup3.PDeg == PROGRESS_DEG_MAX)
 			{
 				APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,286,66\r");
 				App_SetButtonOption(RID_PRO_BTN_DEGP, BN_DISABLE);
 			}
-			if(Setup3.PTm == 20)
+			if(Setup3.PTm == PROGRESS_TIME_MAX)
 			{
 				APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,285,141\r");
 				App_SetButtonOption(RID_PRO_BTN_TMP, BN_DISABLE);
 			}
-			if(Setup3.PTm == 1)
+			if(Setup3.PTm == PROGRESS_TIME_MIN)
 			{
 				APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,346,140\r");
 				App_SetButtonOption(RID_PRO_BTN_TMM, BN_DISABLE);
@@ -16782,7 +16838,7 @@ void UI_Pause_OnBnClickedBtnRight(void)
 	
 	UI_Vibration_Create();
 }
-#define LIMITED_PAUSE_MAX_VALUE				99
+
 void UI_Pause_OnBnClickedBtnUp(void)
 {
 	int pos;
@@ -16796,7 +16852,7 @@ void UI_Pause_OnBnClickedBtnUp(void)
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,285,103\r");
 		App_SetButtonOption(RID_LP_BTN_PAUSEP, BN_DISABLE);
 	}
-	if(Setup3.LP > 1)
+	if(Setup3.LP > LIMITED_PAUSE_MIN_VALUE)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i minus.bmp,345,102\r");
 		App_SetButtonOption(RID_LP_BTN_PAUSEM, BN_PUSHED);
@@ -16812,9 +16868,9 @@ void UI_Pause_OnBnClickedBtnDown(void)
 	if (Setup2.language == LT_CHINA) pos = 148;
 	else pos = 158;
 	
-	if(Setup3.LP > 1)Setup3.LP --;
+	if(Setup3.LP > LIMITED_PAUSE_MIN_VALUE)Setup3.LP --;
 
-	if(Setup3.LP == 1)
+	if(Setup3.LP == LIMITED_PAUSE_MIN_VALUE)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,345,102\r");
 		App_SetButtonOption(RID_LP_BTN_PAUSEM, BN_DISABLE);
@@ -16875,9 +16931,9 @@ void UI_Pause_OnBnLongClickedBtnDown(void)
 	if (Setup3.LP > 5)
 		Setup3.LP -= 5;
 	else {
-		if (Setup3.LP > 1) Setup3.LP--;
+		if (Setup3.LP > LIMITED_PAUSE_MIN_VALUE) Setup3.LP--;
 	}
-	if(Setup3.LP == 1)
+	if(Setup3.LP == LIMITED_PAUSE_MIN_VALUE)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,345,102\r");
 		App_SetButtonOption(RID_LP_BTN_PAUSEM, BN_DISABLE);
@@ -16907,7 +16963,7 @@ void UI_Pause_OnBnClickedBtnChk(void)
 		App_SetButtonOption(RID_LP_BTN_PAUSEP, BN_PUSHED);
 		App_SetButtonOption(RID_LP_BTN_PAUSEM, BN_PUSHED);	
 		Setup3.LPChk = BST_CHECKED;
-		if(Setup3.LP == 1)
+		if(Setup3.LP == LIMITED_PAUSE_MIN_VALUE)
 		{
 			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,345,102\r");
 			App_SetButtonOption(RID_LP_BTN_PAUSEM, BN_DISABLE);
@@ -16969,7 +17025,7 @@ void UI_Pause_Init(void)
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i minus.bmp,345,102\r");
 		App_SetButtonOption(RID_LP_BTN_PAUSEP, BN_PUSHED);
 		App_SetButtonOption(RID_LP_BTN_PAUSEM, BN_PUSHED);	
-		if(Setup3.LP == 1)
+		if(Setup3.LP == LIMITED_PAUSE_MIN_VALUE)
 		{
 			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,345,102\r");
 			App_SetButtonOption(RID_LP_BTN_PAUSEM, BN_DISABLE);
@@ -17109,17 +17165,16 @@ void UI_Vibration_OnBnClickedBtnRight(void)
 	
 	UI_Sens_Create();
 }
-
 void UI_Vibration_OnBnClickedBtnDegUp(void)
 {
-	if(Setup3.VDeg< 10) Setup3.VDeg++;
+	if(Setup3.VDeg< VIBRATION_DEG_MAX) Setup3.VDeg++;
 
-	if(Setup3.VDeg == 10)
+	if(Setup3.VDeg == VIBRATION_DEG_MAX)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,285,66\r");
 		App_SetButtonOption(RID_VIB_BTN_DEGP, BN_DISABLE);
 	}
-	if(Setup3.VDeg > 3)
+	if(Setup3.VDeg > VIBRATION_DEG_MIN)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i minus.bmp,345,66\r");
 		App_SetButtonOption(RID_VIB_BTN_DEGM, BN_PUSHED);
@@ -17130,14 +17185,14 @@ void UI_Vibration_OnBnClickedBtnDegUp(void)
 
 void UI_Vibration_OnBnClickedBtnDegDown(void)
 {
-	if(Setup3.VDeg > 3) Setup3.VDeg --;
+	if(Setup3.VDeg > VIBRATION_DEG_MIN) Setup3.VDeg --;
 
-	if(Setup3.VDeg == 3)
+	if(Setup3.VDeg == VIBRATION_DEG_MIN)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,346,66\r");
 		App_SetButtonOption(RID_VIB_BTN_DEGM, BN_DISABLE);
 	}
-	if(Setup3.VDeg < 10)
+	if(Setup3.VDeg < VIBRATION_DEG_MAX)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i plus.bmp,286,66\r");
 		App_SetButtonOption(RID_VIB_BTN_DEGP, BN_PUSHED);
@@ -17151,15 +17206,15 @@ void UI_Vibration_OnBnLongClickedBtnDegUp(void)
 	{
 		Setup3.VDeg += 2;
 	}
-	else if(Setup3.VDeg<= 8 || Setup3.VDeg < 10)
+	else if(Setup3.VDeg<= 8 || Setup3.VDeg < VIBRATION_DEG_MAX)
 		Setup3.VDeg++;
 
-	if(Setup3.VDeg == 10)
+	if(Setup3.VDeg == VIBRATION_DEG_MAX)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,285,66\r");
 		App_SetButtonOption(RID_VIB_BTN_DEGP, BN_DISABLE);
 	}
-	if(Setup3.VDeg > 3)
+	if(Setup3.VDeg > VIBRATION_DEG_MIN)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i minus.bmp,345,66\r");
 		App_SetButtonOption(RID_VIB_BTN_DEGM, BN_PUSHED);
@@ -17175,15 +17230,15 @@ void UI_Vibration_OnBnLongClickedBtnDegDown(void)
 		Setup3.VDeg -= 2;	
 	}
 
-	else if(Setup3.VDeg>= 5  || Setup3.VDeg> 3)
+	else if(Setup3.VDeg>= 5  || Setup3.VDeg> VIBRATION_DEG_MIN)
 		Setup3.VDeg --;
 
-	if(Setup3.VDeg == 3)
+	if(Setup3.VDeg == VIBRATION_DEG_MIN)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,346,66\r");
 		App_SetButtonOption(RID_VIB_BTN_DEGM, BN_DISABLE);
 	}
-	if(Setup3.VDeg < 10)
+	if(Setup3.VDeg < VIBRATION_DEG_MAX)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i plus.bmp,286,66\r");
 		App_SetButtonOption(RID_VIB_BTN_DEGP, BN_PUSHED);
@@ -17193,14 +17248,14 @@ void UI_Vibration_OnBnLongClickedBtnDegDown(void)
 
 void UI_Vibration_OnBnClickedBtnCntUp(void)
 {
-	if(Setup3.VCnt < 20) Setup3.VCnt ++;
+	if(Setup3.VCnt < VIBRATION_CNT_MAX) Setup3.VCnt ++;
 
-	if(Setup3.VCnt == 20)
+	if(Setup3.VCnt == VIBRATION_CNT_MAX)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,285,141\r");
 		App_SetButtonOption(RID_VIB_BTN_CNTP, BN_DISABLE);
 	}
-	if(Setup3.VCnt > 2)
+	if(Setup3.VCnt > VIBRATION_CNT_MIN)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i minus.bmp,345,140\r");
 		App_SetButtonOption(RID_VIB_BTN_CNTM, BN_PUSHED);
@@ -17210,13 +17265,13 @@ void UI_Vibration_OnBnClickedBtnCntUp(void)
 
 void UI_Vibration_OnBnClickedBtnCntDown(void)
 {
-	if(Setup3.VCnt > 2) Setup3.VCnt --;
-	if(Setup3.VCnt == 2)
+	if(Setup3.VCnt > VIBRATION_CNT_MIN) Setup3.VCnt --;
+	if(Setup3.VCnt == VIBRATION_CNT_MIN)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,346,140\r");
 		App_SetButtonOption(RID_VIB_BTN_CNTM, BN_DISABLE);
 	}
-	if(Setup3.VCnt < 20)
+	if(Setup3.VCnt < VIBRATION_CNT_MAX)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i plus.bmp,286,140\r");
 		App_SetButtonOption(RID_VIB_BTN_CNTP, BN_PUSHED);
@@ -17231,15 +17286,15 @@ void UI_Vibration_OnBnLongClickedBtnCntUp(void)
 	{
 		Setup3.VCnt += 3;
 	}
-	else if(Setup3.VCnt<= 17 || Setup3.VCnt < 20)
+	else if(Setup3.VCnt<= 17 || Setup3.VCnt < VIBRATION_CNT_MAX)
 		Setup3.VCnt++;
 
-	if(Setup3.VCnt == 20)
+	if(Setup3.VCnt == VIBRATION_CNT_MAX)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,285,141\r");
 		App_SetButtonOption(RID_VIB_BTN_CNTP, BN_DISABLE);
 	}
-	if(Setup3.VCnt > 2)
+	if(Setup3.VCnt > VIBRATION_CNT_MIN)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i minus.bmp,345,140\r");
 		App_SetButtonOption(RID_VIB_BTN_CNTM, BN_PUSHED);
@@ -17255,14 +17310,14 @@ void UI_Vibration_OnBnLongClickedBtnCntDown(void)
 		Setup3.VCnt -= 3;	
 	}
 
-	else if(Setup3.VCnt>= 5  || Setup3.VCnt> 2)
+	else if(Setup3.VCnt>= 5  || Setup3.VCnt> VIBRATION_CNT_MIN)
 		Setup3.VCnt --;
-	if(Setup3.VCnt == 2)
+	if(Setup3.VCnt == VIBRATION_CNT_MIN)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,346,140\r");
 		App_SetButtonOption(RID_VIB_BTN_CNTM, BN_DISABLE);
 	}
-	if(Setup3.VCnt < 20)
+	if(Setup3.VCnt < VIBRATION_CNT_MAX)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i plus.bmp,286,140\r");
 		App_SetButtonOption(RID_VIB_BTN_CNTP, BN_PUSHED);
@@ -17296,22 +17351,22 @@ void UI_Vibration_OnBnClickedBtnChk(void)
 		App_SetButtonOption(RID_VIB_BTN_CNTM, BN_PUSHED);
 		App_SetButtonOption(RID_VIB_BTN_CHK, BN_PUSHED);
 		Setup3.VibChk = BST_CHECKED;
-		if(Setup3.VDeg == 10)
+		if(Setup3.VDeg == VIBRATION_DEG_MAX)
 		{
 			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,285,66\r");
 			App_SetButtonOption(RID_VIB_BTN_DEGP, BN_DISABLE);
 		}
-		if(Setup3.VDeg == 3)
+		if(Setup3.VDeg == VIBRATION_DEG_MIN)
 		{
 			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,346,66\r");
 			App_SetButtonOption(RID_VIB_BTN_DEGM, BN_DISABLE);
 		}
-		if(Setup3.VCnt == 20)
+		if(Setup3.VCnt == VIBRATION_CNT_MAX)
 		{
 			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,285,141\r");
 			App_SetButtonOption(RID_VIB_BTN_CNTP, BN_DISABLE);
 		}
-		if(Setup3.VCnt == 2)
+		if(Setup3.VCnt == VIBRATION_CNT_MIN)
 		{
 			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,345,140\r");
 			App_SetButtonOption(RID_VIB_BTN_CNTM, BN_DISABLE);
@@ -17381,22 +17436,22 @@ void UI_Vibration_Init(void)
 		App_SetButtonOption(RID_VIB_BTN_DEGM, BN_PUSHED);	
 		App_SetButtonOption(RID_VIB_BTN_CNTP, BN_PUSHED);
 		App_SetButtonOption(RID_VIB_BTN_CNTM, BN_PUSHED);
-		if(Setup3.VDeg == 10)
+		if(Setup3.VDeg == VIBRATION_DEG_MAX)
 		{
 			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,285,66\r");
 			App_SetButtonOption(RID_VIB_BTN_DEGP, BN_DISABLE);
 		}
-		if(Setup3.VDeg == 3)
+		if(Setup3.VDeg == VIBRATION_DEG_MIN)
 		{
 			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,346,66\r");
 			App_SetButtonOption(RID_VIB_BTN_DEGM, BN_DISABLE);
 		}
-		if(Setup3.VCnt == 20)
+		if(Setup3.VCnt == VIBRATION_CNT_MAX)
 		{
 			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,285,141\r");
 			App_SetButtonOption(RID_VIB_BTN_CNTP, BN_DISABLE);
 		}
-		if(Setup3.VCnt == 2)
+		if(Setup3.VCnt == VIBRATION_CNT_MIN)
 		{
 			APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,346,140\r");
 			App_SetButtonOption(RID_VIB_BTN_CNTM, BN_DISABLE);
@@ -17561,13 +17616,13 @@ void UI_HomePos_OnBnClickedBtnHPosUp(void)
 	if (Setup2.language == LT_CHINA) pos = 148;
 	else pos = 158;
 
-	if(Setup3.IPos < 90) Setup3.IPos++;
-	if(Setup3.IPos == 90)
+	if(Setup3.IPos < HOMEPOS_MAX_ANGLE) Setup3.IPos++;
+	if(Setup3.IPos == HOMEPOS_MAX_ANGLE)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,286,102\r");
 		App_SetButtonOption(RID_LP_BTN_PAUSEP, BN_DISABLE);
 	}
-	if(Setup3.IPos  > 0)
+	if(Setup3.IPos  > HOMEPOS_MIN_ANGLE)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i minus.bmp,345,102\r");
 		App_SetButtonOption(RID_LP_BTN_PAUSEM, BN_PUSHED);
@@ -17583,13 +17638,13 @@ void UI_HomePos_OnBnClickedBtnHPosDown(void)
 	if (Setup2.language == LT_CHINA) pos = 148;
 	else pos = 158;
 
-	if(Setup3.IPos > 0) Setup3.IPos --;
-	if(Setup3.IPos == 0)
+	if(Setup3.IPos > HOMEPOS_MIN_ANGLE) Setup3.IPos --;
+	if(Setup3.IPos == HOMEPOS_MIN_ANGLE)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,345,102\r");
 		App_SetButtonOption(RID_LP_BTN_PAUSEM, BN_DISABLE);
 	}
-	if(Setup3.IPos < 90)
+	if(Setup3.IPos < HOMEPOS_MAX_ANGLE)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i plus.bmp,286,102\r");
 		App_SetButtonOption(RID_LP_BTN_PAUSEP, BN_PUSHED);
@@ -17609,15 +17664,15 @@ void UI_HomePos_OnBnLongClickedBtnHPosUp(void)
 	{
 		Setup3.IPos += 5;
 	}
-	else if(Setup3.IPos<= 86 || Setup3.IPos < 90)
+	else if(Setup3.IPos<= 86 || Setup3.IPos < HOMEPOS_MAX_ANGLE)
 		Setup3.IPos++;
 
-	if(Setup3.IPos  == 90)
+	if(Setup3.IPos  == HOMEPOS_MAX_ANGLE)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,286,102\r");
 		App_SetButtonOption(RID_LP_BTN_PAUSEP, BN_DISABLE);
 	}
-	if(Setup3.IPos  > 0)
+	if(Setup3.IPos  > HOMEPOS_MIN_ANGLE)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i minus.bmp,345,102\r");
 		App_SetButtonOption(RID_LP_BTN_PAUSEM, BN_PUSHED);
@@ -17638,15 +17693,15 @@ void UI_HomePos_OnBnLongClickedBtnHPosDown(void)
 		Setup3.IPos -= 5;	
 	}
 
-	else if(Setup3.IPos >= 5  || Setup3.IPos > 0)
+	else if(Setup3.IPos >= 5  || Setup3.IPos > HOMEPOS_MIN_ANGLE)
 		Setup3.IPos --;
 
-	if(Setup3.IPos == 0)
+	if(Setup3.IPos == HOMEPOS_MIN_ANGLE)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,345,102\r");
 		App_SetButtonOption(RID_LP_BTN_PAUSEM, BN_DISABLE);
 	}
-	if(Setup3.IPos < 90)
+	if(Setup3.IPos < HOMEPOS_MAX_ANGLE)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i plus.bmp,286,102\r");
 		App_SetButtonOption(RID_LP_BTN_PAUSEP, BN_PUSHED);
@@ -17694,12 +17749,12 @@ void UI_HomePos_Init(void)
 	//if (loginInfo.type == LIT_USER) UI_LoadPIFromEEPROM(PInfoWnd2.id, (uint8_t *)CommonBuf);
 	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE, pos,113,Setup3.IPos,2);
 	
-	if(Setup3.IPos == 0)
+	if(Setup3.IPos == HOMEPOS_MIN_ANGLE)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,345,102\r");
 		App_SetButtonOption(RID_LP_BTN_PAUSEM, BN_DISABLE);
 	}
-	if(Setup3.IPos == 90)
+	if(Setup3.IPos == HOMEPOS_MAX_ANGLE)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,286,102\r");
 		App_SetButtonOption(RID_LP_BTN_PAUSEP, BN_DISABLE);
@@ -17817,16 +17872,16 @@ void UI_Sens_OnBnClickedBtnSSVUp(void)
 	if (Setup2.language == LT_CHINA) pos = 148;
 	else pos = 158;
 	
-	if(Setup3.sensitivity < 4) Setup3.sensitivity++;
+	if(Setup3.sensitivity < SENSITIVITY_MAX) Setup3.sensitivity++;
 	//Over_Current = Motor_OverCurTbl[Setup3.sensitivity-1];
 	MotorDrv_SetSensCurrent(Motor_OverCurTbl[Setup3.sensitivity-1][SpdTmWnd.speed-1]);
 
-	if(Setup3.sensitivity == 4)
+	if(Setup3.sensitivity == SENSITIVITY_MAX)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,286,102\r");
 		App_SetButtonOption(RID_LP_BTN_PAUSEP, BN_DISABLE);
 	}
-	if(Setup3.sensitivity > 1)
+	if(Setup3.sensitivity > SENSITIVITY_MIN)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i minus.bmp,345,102\r");
 		App_SetButtonOption(RID_LP_BTN_PAUSEM, BN_PUSHED);
@@ -17842,16 +17897,16 @@ void UI_Sens_OnBnClickedBtnSSVDown(void)
 	if (Setup2.language == LT_CHINA) pos = 148;
 	else pos = 158;
 	
-	if(Setup3.sensitivity > 1) Setup3.sensitivity--;
+	if(Setup3.sensitivity > SENSITIVITY_MIN) Setup3.sensitivity--;
 	//Over_Current = Motor_OverCurTbl[Setup3.sensitivity-1];
 	MotorDrv_SetSensCurrent(Motor_OverCurTbl[Setup3.sensitivity-1][SpdTmWnd.speed-1]);
 
-	if(Setup3.sensitivity == 1)
+	if(Setup3.sensitivity == SENSITIVITY_MIN)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,345,102\r");
 		App_SetButtonOption(RID_LP_BTN_PAUSEM, BN_DISABLE);
 	}
-	if(Setup3.sensitivity < 4)
+	if(Setup3.sensitivity < SENSITIVITY_MAX)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i plus.bmp,286,102\r");
 		App_SetButtonOption(RID_LP_BTN_PAUSEP, BN_PUSHED);
@@ -17900,12 +17955,12 @@ void UI_Sens_Init(void)
 
 	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_1PLACE, pos,113,Setup3.sensitivity,1);
 	
-	if(Setup3.sensitivity == 1)
+	if(Setup3.sensitivity == SENSITIVITY_MIN)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nminus.bmp,345,102\r");
 		App_SetButtonOption(RID_LP_BTN_PAUSEM, BN_DISABLE);
 	}
-	if(Setup3.sensitivity == 4)
+	if(Setup3.sensitivity == SENSITIVITY_MAX)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,285,103\r");
 		App_SetButtonOption(RID_LP_BTN_PAUSEP, BN_DISABLE);
@@ -21005,7 +21060,7 @@ void UI_AngleMeasure_OnBnClickedBtnHome(void)
 		UI_InitVariable();
 	}
 
-	keep.flag = 0;
+	//keep.flag = 0;
 	if (Setup2.quick == 0) 
 	{
 		//keep.flag = 0;
@@ -21024,6 +21079,15 @@ void UI_AngleMeasure_OnBnClickedBtnRight(void)
 {
 	//if (loginInfo.type == LIT_USER) ;//pjg--190725 UI_SavePIToEEPROM(PInfoWnd2.id, (uint8_t *)CommonBuf);	
 //	if (SysInfo.meaCnt < 1) return;
+	//if (keep.flag == 0 ) {
+		keep.time = SpdTmWnd.time; //201120 bg
+		keep.flAngle = AngleWnd.flAngle;
+		keep.exAngle = AngleWnd.exAngle;
+		keep.speed = keep.speedBk;
+	//}
+	keep.flag = 1; //pjg++210503
+	SpdTmWnd.speed = keep.speed;
+
 	UI_SpeedTime_Create();//UI_Angle_Create();
 }
 
@@ -21568,45 +21632,43 @@ void UI_AngleMeasure_SetMeasureMode(void)
 void UI_AngleMeasure_Init(void)
 {		
 
+	keep.speedBk = keep.speed;//SpdTmWnd.speed;
+	SpdTmWnd.speed = MS_SPEED4;  //201026bg
+	App_SetUIProcess(UI_ProcessNull); //pjg++190905
+	UI_LED_Control(LM_STAND_BY);
+	// user init
+	RunWnd.complete = 0;
+	
 	if (Setup2.quick == 0)
 	{
 	
 	}
-
-	else {
-
+	else 
+	{
 		//if (keep.flag == 0) {
 		// home init
-		keep.speedBk = SpdTmWnd.speed;
-		SpdTmWnd.speed = MS_SPEED4;  //201026bg
-		App_SetUIProcess(UI_ProcessNull); //pjg++190905
-		UI_LED_Control(LM_STAND_BY);
 		SaveExeInfoV2.flg = MST_REHAB;
 		if (SysInfo.meaCnt < 1) {
+			// user - guest button init
+			UI_InitVariable();
 			// home - rehab button init
 			SaveExeInfoV2.spm.mi.exangle = 0;
 			SaveExeInfoV2.spm.mi.flangle = 0;
 			
-			if (keep.flag == 1) {
-				AngleWnd.flAngle = keep.flAngle;
-				AngleWnd.exAngle = keep.exAngle;
-			}
-			// user - guest button init
-			UI_InitVariable();
 		}
 		FullInfo.type = FT_RUN;
 
-		// user init
-		RunWnd.complete = 0;
 		//SysInfo.meaCnt = 0; //pjg--210429
 
 		loginInfo.type = LIT_GUEST;
-		//}		
-	
+		//}			
 	}
 
-
-
+	if (keep.flag == 1) {
+		AngleWnd.flAngle = keep.flAngle;
+		AngleWnd.exAngle = keep.exAngle;
+		SpdTmWnd.time = keep.time;
+	}
 
 	
 	APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)DoubleBufStartCmd);
