@@ -122,7 +122,7 @@ source
 #define ANGLE_MOVE_GAP				5
 #define ANGLE_MIN_GAP				5
 #define ANGLE_MIN_DEG				5
-#define SAVE_OFFSET_VALUE			2
+#define SAVE_OFFSET_VALUE			5///2
 #define RUN_MIN_EXE_ANGLE			5
 
 #define LOGIN_GUEST_PWD_LEN			4
@@ -419,7 +419,7 @@ const char COMPANY_t[COMPANY_LENGTH] = {"HEXAR SYSTEMS"};
 const char MODEL_t[MODEL_LENGTH] = {"KR20P"};
 //v1.1.0 : hw v2.1
 //v1.2.0 : hw v1.8 product 
-const uint8_t FW_VER[] = {'1', '2', '4','0'};//v1.0.Korea Gxx
+const uint8_t FW_VER[] = {'1', '2', '3','0'};//v1.0.Korea Gxx
 const uint8_t HW_VER[] = {'1', '8'};									
 const MYDATE_FMT CREATE_DATE = {2017, 3, 24};		//2017y, 3m, 24d
 const uint8_t CREATE_TIME[3] = {16, 31, 55};		//hour, min, sec
@@ -3908,7 +3908,7 @@ void UI_SetSensitivityByCalibrationValue(uint16_t  __packed value[][MS_SPEED_MAX
 														56.15*(float)(i+2) + -62.25);
 			}
 			#endif
-               Product_Calib.maxCurrent[i+1][j] = Motor_OverCurTbl[SL_LEVEL_MAX-i-1][j];
+               	Product_Calib.maxCurrent[i+1][j] = Motor_OverCurTbl[SL_LEVEL_MAX-i-1][j];
 		}
 	}
 #else
@@ -7310,20 +7310,21 @@ void UI_SpeedTime_SetSpTm_Pic(short Speed,short Time)
 	//APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i ab001.png,276,70\r");
     if (Speed == 1) {
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,190,66\r");
+		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,190,82\r");
     }
     else if (Speed == 2) {
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,190,66\r");
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sp01.bmp,190,126\r");
+		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sp01.bmp,190,124\r");
     }
     else if (Speed == 3) {
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,190,66\r");
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sp01.bmp,190,126\r");
+		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sp01.bmp,190,124\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sp01.bmp,190,106\r");
 		
     }	
     else if (Speed == 4) {
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,190,66\r");
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sp01.bmp,190,126\r");
+		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sp01.bmp,190,124\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sp01.bmp,190,106\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sp01.bmp,190,86\r");
 
@@ -7331,7 +7332,7 @@ void UI_SpeedTime_SetSpTm_Pic(short Speed,short Time)
     }	
     else if (Speed == 5) {
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,190,66\r");
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sp01.bmp,190,126\r");
+		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sp01.bmp,190,124\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sp01.bmp,190,106\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sp01.bmp,190,86\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sp02.bmp,190,66\r");
@@ -11301,13 +11302,21 @@ void UI_PopupIDRight_OnBnClickedBtnOk(void)
 			if (sei.flg < 2) {
 				if (sei.flg == MST_REHAB) {
 					SaveExeInfoV2.spm.mi.exangle = sei.spm.exangle;
+					if (SaveExeInfoV2.spm.mi.exangle > RUN_ANGLE_MAX)
+						SaveExeInfoV2.spm.mi.exangle = RUN_ANGLE_MIN+5;
 					SaveExeInfoV2.spm.mi.flangle = sei.spm.flangle;
+					if (SaveExeInfoV2.spm.mi.flangle > RUN_ANGLE_MAX+5)
+						SaveExeInfoV2.spm.mi.flangle = RUN_ANGLE_MAX+5;
 				}
 				else {
 					temp = (sei.smm.mi[0].exangle + sei.smm.mi[1].exangle + sei.smm.mi[2].exangle)/3;
 					SaveExeInfoV2.spm.mi.exangle = temp;
+					if (SaveExeInfoV2.spm.mi.exangle > RUN_ANGLE_MAX)
+						SaveExeInfoV2.spm.mi.exangle = RUN_ANGLE_MIN+5;
 					temp = (sei.smm.mi[0].flangle + sei.smm.mi[1].flangle + sei.smm.mi[2].flangle)/3;
 					SaveExeInfoV2.spm.mi.flangle = temp;
+					if (SaveExeInfoV2.spm.mi.flangle > RUN_ANGLE_MAX+5)
+						SaveExeInfoV2.spm.mi.flangle = RUN_ANGLE_MAX+5;
 				}
 			}
 		}
@@ -21383,7 +21392,7 @@ void UI_AngleMeasure_OnBnLongClickedBtnFlUp(void)
 
 void UI_AngleMeasure_OnBnLongClickedBtnFlDown(void)
 {
-	if(AngleWnd.exAngle >= (AngleWnd.flAngle-RUN_MIN_EXE_ANGLE) || AngleWnd.flAngle == 20)
+	if(AngleWnd.exAngle >= (AngleWnd.flAngle-RUN_MIN_EXE_ANGLE))// || AngleWnd.flAngle == 20)
 	{
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i nplus.bmp,16,166\r");
 		App_SetButtonOption(RID_ANG_BTN_EXP, BN_DISABLE);
@@ -21530,7 +21539,7 @@ void UI_AngleMeasure_SetRehabMode(void)
 			if (AngleWnd.exAngle < RUN_ANGLE_MIN) AngleWnd.exAngle = RUN_ANGLE_MIN;
 		}
 		else {
-            AngleWnd.exAngle = SaveExeInfoV2.spm.mi.exangle - SAVE_OFFSET_VALUE - Setup3.AutoAngValue;
+            		AngleWnd.exAngle = SaveExeInfoV2.spm.mi.exangle - SAVE_OFFSET_VALUE - Setup3.AutoAngValue;
 			if (AngleWnd.exAngle < RUN_ANGLE_MIN) AngleWnd.exAngle = RUN_ANGLE_MIN;
 		}
 		AngleWnd.flAngle = SaveExeInfoV2.spm.mi.flangle - SAVE_OFFSET_VALUE + Setup3.AutoAngValue;
