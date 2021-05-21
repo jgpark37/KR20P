@@ -424,6 +424,7 @@ const uint8_t HW_VER[] = {'1', '8'};
 const MYDATE_FMT CREATE_DATE = {2017, 3, 24};		//2017y, 3m, 24d
 const uint8_t CREATE_TIME[3] = {16, 31, 55};		//hour, min, sec
 const uint8_t PARAM_VER[] = {'1', '0'}; //pjg++210503
+const uint8_t SYSTEM_INFO_VER[] = {'1', '0'}; //pjg++210521
 
 const uint8_t DoubleBufStartCmd[] = {"<D\r"};
 const uint8_t DoubleBufEndCmd[] = {"!D\r"};
@@ -718,6 +719,7 @@ typedef __packed struct _tagFLASH_SAVE_SYSTEM_BASE_INFO {
 	char company[COMPANY_LENGTH];
 	char model[MODEL_LENGTH];
 	char ver[4];
+	char sysVer[2]; //pjg++210521 system info version
 	uint32_t serialnum; //pjg++180528
 	uint32_t adminPwd; //pjg++180615
 	MYDATE_FMT createDate;
@@ -1553,9 +1555,8 @@ uint32_t UI_LoadSystemInfoFromFlash(char *buf)
 		if (pFSSysInfo->company[0] != 'H' ||
 			pFSSysInfo->company[1] != 'E' ||
 			pFSSysInfo->company[2] != 'X' || 
-			(pFSSysInfo->ver[0] != FW_VER[0] || 
-			pFSSysInfo->ver[1] != FW_VER[1] || 
-			pFSSysInfo->ver[2] != FW_VER[2] )) {
+			(pFSSysInfo->sysVer[0] != SYSTEM_INFO_VER[0] || 
+			pFSSysInfo->sysVer[1] != SYSTEM_INFO_VER[1] )) {
 			if (i == 0) return 0;
 			//break;
 		}
@@ -1735,6 +1736,7 @@ int UI_SaveSystemInfoToFlash(char *buf)
 	for (i = 0; i < COMPANY_LENGTH; i++) pFSSysInfo->company[i] = COMPANY_t[i];
 	for (i = 0; i < MODEL_LENGTH; i++) pFSSysInfo->model[i] = MODEL_t[i];
 	for (i = 0; i < 3; i++) pFSSysInfo->ver[i] = FW_VER[i];
+	for (i = 0; i < 2; i++) pFSSysInfo->sysVer[i] = SYSTEM_INFO_VER[i];
 	
 	if (SysInfo.writetime == 0) {
 		pFSSysInfo->serialnum = udi[0]+udi[1]+udi[2];
@@ -5292,7 +5294,7 @@ void UI_Product_Process_Calibration_Measure(void)
 		//MotorDrv_StopNoCtrl();
 		MotorDrv_SetTargetPosition(MotorDrv_GetPosition()); //pjg++180402 quickly stop
 		MotorDrv_Stop();		
-
+#if 0 //for debugging - display angle and max current on top area
 		if (Product_Calib.motorSpeed == 1) {
 			UI_DisplayDecimal(UI_DISP_NUM_FNT5, UI_DISP_NUM_1PLACE, 5,10, 
 				Product_Calib.deg[Product_Calib.massStep][Product_Calib.motorSpeed-1]);
@@ -5323,7 +5325,7 @@ void UI_Product_Process_Calibration_Measure(void)
 			UI_DisplayDecimal(UI_DISP_NUM_FNT5, UI_DISP_NUM_6PLACE, 345,10, 
 				Product_Calib.maxCurrent[Product_Calib.massStep][Product_Calib.motorSpeed-1]);
 		}		
-		
+#endif		
 		Product_Calib.motorSpeed++;
 		if (Product_Calib.motorSpeed > MS_SPEED_MAX) {
 			Product_Calib.motorSpeed = 1;
@@ -7309,7 +7311,7 @@ void UI_SpeedTime_SetSpTm_Pic(short Speed,short Time)
       //APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i angle-b-22.png,276,70\r");101112
 	//APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i ab001.png,276,70\r");
     if (Speed == 1) {
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,190,66\r");
+		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,190,66\r"); //white bk
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,190,82\r");
     }
     else if (Speed == 2) {
@@ -7331,64 +7333,65 @@ void UI_SpeedTime_SetSpTm_Pic(short Speed,short Time)
 		
     }	
     else if (Speed == 5) {
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,190,66\r");
+		//APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,190,66\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sp01.bmp,190,124\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sp01.bmp,190,106\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sp01.bmp,190,86\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sp02.bmp,190,66\r");
 		
-    }	
+    }
     /*    else {
 	//	APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,51,41\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sp01.bmp,190,98\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sp01.bmp,190,111\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sp02.bmp,190,66\r");
      }*/
-
-	 if (Time < 10) {
-	 	APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,259,73\r");
+     if (Time < 0) {
+	}
+	else if (Time < 10) {
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,259,66\r");
+	 	APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,259,94\r");
      }
      else if (Time < 20) {
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,259,73\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,259,66\r");
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i tm01.bmp,259,139\r");
+		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,259,94\r");
+		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i tm01.bmp,259,138\r");
     }
 	else if (Time < 30) {
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,259,73\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,259,66\r");
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i tm01.bmp,259,139\r");
+		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,259,94\r");
+		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i tm01.bmp,259,138\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i tm01.bmp,259,125\r");
     }
 	else if (Time < 40) {
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,259,73\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,259,66\r");
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i tm01.bmp,259,139\r");
+		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,259,95\r");
+		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i tm01.bmp,259,138\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i tm01.bmp,259,125\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i tm01.bmp,259,111\r");
 	
     }
 	else if (Time < 50) {
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,259,73\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,259,66\r");
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i tm01.bmp,259,139\r");
+		//APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,259,95\r");
+		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i tm01.bmp,259,138\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i tm01.bmp,259,125\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i tm01.bmp,259,111\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i tm01.bmp,259,97\r");
     }
 	else if (Time < 60) {
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,259,74\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,259,66\r");
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i tm01.bmp,259,139\r");
+		//APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,259,95\r");
+		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i tm01.bmp,259,138\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i tm01.bmp,259,125\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i tm01.bmp,259,111\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i tm01.bmp,259,97\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i tm01.bmp,259,83\r");
     }
     else {
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,259,74\r");
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,259,66\r");
-		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i tm01.bmp,259,139\r");
+		//APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,259,66\r");
+		//APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i sptmwh.bmp,259,95\r");
+		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i tm01.bmp,259,138\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i tm01.bmp,259,125\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i tm01.bmp,259,111\r");
 		APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i tm01.bmp,259,97\r");
@@ -7486,7 +7489,7 @@ void UI_SpeedTime_OnBnClickedBtnSpdUp(void)
 		App_SetButtonOption(RID_STS_BTN_SPDP, BN_DISABLE);
 	}	
 
-	UI_SpeedTime_SetSpTm_Pic(SpdTmWnd.speed,SpdTmWnd.time);
+	UI_SpeedTime_SetSpTm_Pic(SpdTmWnd.speed,-1);//SpdTmWnd.time);
 }
 
 //모터 속도 단계 값 감소
@@ -7511,7 +7514,7 @@ void UI_SpeedTime_OnBnClickedBtnSpdDown(void)
 		App_SetButtonOption(RID_STS_BTN_SPDP, BN_PUSHED);	
 	}
 
-	UI_SpeedTime_SetSpTm_Pic(SpdTmWnd.speed,SpdTmWnd.time);
+	UI_SpeedTime_SetSpTm_Pic(SpdTmWnd.speed,-1);//SpdTmWnd.time);
 }
 
 void UI_SpeedTime_OnBnLongClickedBtnSpdUp(void)
@@ -7536,7 +7539,7 @@ void UI_SpeedTime_OnBnLongClickedBtnSpdUp(void)
 		App_SetButtonOption(RID_STS_BTN_SPDP, BN_DISABLE);
 	}	
 	
-	UI_SpeedTime_SetSpTm_Pic(SpdTmWnd.speed,SpdTmWnd.time);
+	UI_SpeedTime_SetSpTm_Pic(SpdTmWnd.speed,-1);//SpdTmWnd.time);
 }
 
 void UI_SpeedTime_OnBnLongClickedBtnSpdDown(void)
@@ -7561,7 +7564,7 @@ void UI_SpeedTime_OnBnLongClickedBtnSpdDown(void)
 		App_SetButtonOption(RID_STS_BTN_SPDP, BN_PUSHED);	
 	}
 
-	UI_SpeedTime_SetSpTm_Pic(SpdTmWnd.speed,SpdTmWnd.time);
+	UI_SpeedTime_SetSpTm_Pic(SpdTmWnd.speed,-1);//SpdTmWnd.time);
 }
 
 //구동시간 증가
@@ -7602,7 +7605,7 @@ void UI_SpeedTime_OnBnClickedBtnTmUp(void)
 	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 355, 94, SpdTmWnd.time,2);
 #endif
 
-	UI_SpeedTime_SetSpTm_Pic(SpdTmWnd.speed,SpdTmWnd.time);
+	UI_SpeedTime_SetSpTm_Pic(-1,SpdTmWnd.time);
 
 }
 //구동시간 감소
@@ -7637,7 +7640,7 @@ void UI_SpeedTime_OnBnClickedBtnTmDown(void)
 #else
 	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 355, 94, SpdTmWnd.time,2);
 #endif
-	UI_SpeedTime_SetSpTm_Pic(SpdTmWnd.speed,SpdTmWnd.time);
+	UI_SpeedTime_SetSpTm_Pic(-1,SpdTmWnd.time);
 
 }
 
@@ -7684,7 +7687,7 @@ void UI_SpeedTime_OnBnLongClickedBtnTmUp(void)
 	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 355, 94, SpdTmWnd.time,2);
 #endif
 
-	UI_SpeedTime_SetSpTm_Pic(SpdTmWnd.speed,SpdTmWnd.time);
+	UI_SpeedTime_SetSpTm_Pic(-1,SpdTmWnd.time);
 }
 
 void UI_SpeedTime_OnBnLongClickedBtnTmDown(void)
@@ -7730,7 +7733,7 @@ void UI_SpeedTime_OnBnLongClickedBtnTmDown(void)
 	UI_DisplayDecimalSel(UI_DISP_NUM_FNT9, UI_DISP_NUM_2PLACE, 355, 94, SpdTmWnd.time,2);
 #endif
 
-	UI_SpeedTime_SetSpTm_Pic(SpdTmWnd.speed,SpdTmWnd.time);
+	UI_SpeedTime_SetSpTm_Pic(-1,SpdTmWnd.time);
 }
 
 void UI_SpeedTime_OnBnClickedBtnSetup(void)
@@ -19297,7 +19300,7 @@ void UI_VersionInfo_SWVersion(uint32_t FW)
 	buf[10] = '2';	//x coord
 	buf[11] = '3';
 	buf[12] = '5';
-	APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)&CommonBuf[60]); //4st 
+	//APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)&CommonBuf[60]); //4st 
 
 
 	
@@ -19305,7 +19308,7 @@ void UI_VersionInfo_SWVersion(uint32_t FW)
 	
 	APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i dt.png,216,104\r"); 
 
-	APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i dt.png,230,104\r"); 
+	//APP_SendMessage(hParent, WM_PAINT, 0, (LPARAM)"i dt.png,230,104\r"); 
 }
 
 void UI_VersionInfo_HWVersion(uint16_t HW)
