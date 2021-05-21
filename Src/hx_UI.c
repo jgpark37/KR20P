@@ -8606,7 +8606,15 @@ void UI_Run_OnBnClickedBtnLeft(void)
 	API_ChangeHMenu(hParent, RID_RN_BTN_PAUSE, RID_RN_BTN_PLAY);
 	App_KillTimer(TIMER_ID_2);
 	App_SetUIProcess(UI_ProcessNull); 
-	//keep.flag = 1;
+	 if (keep.flag == 1) {  //pjg++210521
+	 }
+	 else {
+	 	keep.flag = 1;
+	 	keep.time = SpdTmWnd.time;
+		keep.speed = SpdTmWnd.speed;
+	 	keep.flAngle = AngleWnd.flAngle;
+	 	keep.exAngle = AngleWnd.exAngle;
+	 }
    	UI_SpeedTime_Create();
 }
 
@@ -8623,6 +8631,15 @@ void UI_Run_OnBnClickedBtnHome(void)
 	App_KillTimer(TIMER_ID_2);
 	App_SetUIProcess(UI_ProcessNull); 
 
+	 if (keep.flag == 1) {  //pjg++210521
+	 }
+	 else {
+	 	keep.flag = 1;
+	 	keep.time = SpdTmWnd.time;
+		keep.speed = SpdTmWnd.speed;
+	 	keep.flAngle = AngleWnd.flAngle;
+	 	keep.exAngle = AngleWnd.exAngle;
+	 }
 	if (Setup2.quick == 0) 
 	{
    		UI_Home_Create();
