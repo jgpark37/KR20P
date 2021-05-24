@@ -8480,6 +8480,9 @@ void UI_Run_SetGotoHomeCmd(void)
 
 void UI_Run_Process_HomeIn(void)
 {
+	uint32_t temp32;
+	uint16_t temp16;
+	
 	//pjg++>180806
 	//if (!UI_CheckMotorStatus()) return;
 	//pjg<++180806	
@@ -8504,9 +8507,13 @@ void UI_Run_Process_HomeIn(void)
 		App_SetButtonOption(RID_RN_BTN_LIMCHK, BN_PUSHED);
 		App_SetButtonOption(RID_RN_BTN_VIBCHK, BN_PUSHED);
 		KeyDrv_Disable(0);
+		temp32 = RunWnd.time;
+		temp16 = RunWnd.repeat;
 		UI_Run_InitVar();
 		App_KillTimer(TIMER_ID_2);
 		RunWnd.play = UI_RUN_MODE_PAUSE;
+		RunWnd.time = temp32;
+		RunWnd.repeat = temp16;
 		//MotorDrv_SetOverCurrent(STANDBY_CHK_CURRENT); //pjg++190904 : to prevent thtat motor is break when fast press machine
 		MotorDrv_SetSensCurrent(STANDBY_SENS_CURRENT);
 	}
